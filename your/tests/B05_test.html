@@ -1,0 +1,43 @@
+<!doctype html><html><head><meta charset="utf-8"><title>B05 neighborhood_map — YOUR · PROPOSAL_HOLD</title>
+<style>body{margin:0;background:#0b0c10;color:#ddd;font:13px system-ui}#stage{width:960px;height:540px;position:relative;background:#000}#results{padding:8px 12px;max-width:940px;line-height:1.5}.p{color:#7dffb0}.f{color:#ff5d73}</style>
+<script>window.__g0=Object.keys(window);</script></head>
+<body><div id="stage"><canvas id="c"></canvas></div><div id="results">running…</div>
+<script src="../modules/your_config.js"></script>
+<script src="../modules/your_core.js"></script>
+<script src="../modules/your_testkit.js"></script>
+<script src="../modules/your_input.js"></script>
+<script src="../modules/your_character.js"></script>
+<script src="../modules/your_profile.js"></script>
+<script src="../modules/your_world.js"></script>
+<script>
+(async function(){
+"use strict";
+var Y=window.YOUR;
+try{
+
+await YT.boot();
+
+YT.freshProfile('Walker');
+var sc=Y.core.scene.register('world',Y.world.makeScene()); Y.core.scene.go('world');
+var P=sc.player;
+
+var W=Y.world, enters=[]; W.onEnter=function(id){enters.push(id);};
+YT.test('map is data: 40x30 string array with 5 POIs (Y.O.U.R. places)',function(){ YT.ok(Array.isArray(W.MAP)&&typeof W.MAP[0]==='string'); YT.eq([W.cols,W.rows],[40,30]); YT.eq(Object.keys(W.pois).sort(),['arena','field','home','skatepark','store']); });
+YT.test('camera never shows outside map bounds',function(){ [[0,0],[W.pw,W.ph],[W.pw,0],[0,W.ph],[640,480]].forEach(function(q){ P.x=q[0];P.y=q[1]; W.follow(P,true); for(var i=0;i<5;i++)W.follow(P); YT.ok(W.cam.x>=0&&W.cam.y>=0&&W.cam.x<=W.pw-960&&W.cam.y<=W.ph-540,'cam '+JSON.stringify(W.cam)); });
+  var sp=W.spawn('home'); P.x=sp.x; P.y=sp.y; YT.down('KeyD'); for(var i=0;i<240;i++){ YT.step(1); YT.ok(W.cam.x>=0&&W.cam.x<=W.pw-960,'walking cam'); } YT.up('KeyD'); });
+YT.test('each of 5 POIs triggers onEnter exactly once per press (held A does not repeat)',function(){ Object.keys(W.pois).forEach(function(id){ var p=W.pois[id]; P.x=p.x; P.y=p.y+8; enters.length=0; YT.down('KeyJ'); YT.step(30); YT.up('KeyJ'); YT.step(1); YT.eq(enters,[id],'POI '+id); YT.tap('KeyJ'); YT.eq(enters.length,2,'second press'); }); });
+YT.test('minimap shows player dot within 1 tile',function(){ P.x=700; P.y=500; YT.step(1); var d=W.lastMinimapDot, ex=d.ox+P.x/32*d.s, ey=d.oy+P.y/32*d.s; YT.ok(Math.abs(d.x-ex)<=d.s&&Math.abs(d.y-ey)<=d.s,'dot'); });
+YT.test('character collides with buildings/trees (solid tiles)',function(){ var p=W.pois.home; P.x=p.x; P.y=p.y-40; YT.ok(W.solid(P.x,P.y),'inside building is solid'); P.x=W.TILE*1.5; P.y=W.TILE*1.5; YT.down('KeyA'); YT.step(60); YT.up('KeyA'); YT.ok(P.x>W.TILE,'stopped by border trees'); });
+YT.test('60 fps budget: 1280x720 canvas, full redraw avg < 16.7 ms with off-screen culling',function(){ var st=document.getElementById('stage'); st.style.width='1280px'; st.style.height='720px'; Y.core.resize(); var t0=performance.now(); for(var i=0;i<300;i++){ P.x=200+i*3; Y.core.render(); } var avg=(performance.now()-t0)/300; window.__avgMs=avg;
+  st.style.width='960px'; st.style.height='540px'; Y.core.resize(); YT.ok(avg<16.7,'avg '+avg.toFixed(2)+' ms'); YT.ok(W.stats.tilesDrawn<W.cols*W.rows,'culled: '+W.stats.tilesDrawn); });
+/* representative frame for the screenshot (runs after tests) */
+var frameFn=function(){
+var sp=W.spawn('store'); P.x=sp.x-120; P.y=sp.y+90; W.follow(P,true); YT.down('KeyS'); YT.step(6); YT.up('KeyS'); YT.step(1);
+};
+}catch(e){ console.error("test page setup failed",e); YT.test("page setup",function(){throw e;}); }
+await YT.run();
+try{ if(typeof frameFn==="function")frameFn(); }catch(e){ console.error("frame render failed",e); }
+window.__frameDone=true;
+})();
+</script>
+</body></html>

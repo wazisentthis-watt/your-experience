@@ -1,0 +1,39 @@
+<!doctype html><html><head><meta charset="utf-8"><title>B14 hud_journal — YOUR · PROPOSAL_HOLD</title>
+<style>body{margin:0;background:#0b0c10;color:#ddd;font:13px system-ui}#stage{width:960px;height:540px;position:relative;background:#000}#results{padding:8px 12px;max-width:940px;line-height:1.5}.p{color:#7dffb0}.f{color:#ff5d73}</style>
+<script>window.__g0=Object.keys(window);</script></head>
+<body><div id="stage"><canvas id="c"></canvas></div><div id="results">running…</div>
+<script src="../modules/your_config.js"></script>
+<script src="../modules/your_core.js"></script>
+<script src="../modules/your_testkit.js"></script>
+<script src="../modules/your_input.js"></script>
+<script src="../modules/your_profile.js"></script>
+<script src="../modules/your_hud.js"></script>
+<script src="../modules/your_day.js"></script>
+<script>
+(async function(){
+"use strict";
+var Y=window.YOUR;
+try{
+
+await YT.boot();
+YT.freshProfile('HUD'); var Hd=Y.hud;
+var sc={update:function(dt){Y.day.update(dt);},render:function(g){ g.fillStyle='#2d4a3a'; g.fillRect(0,0,960,540); Hd.render(g); }};
+Y.core.scene.register('h',sc); Y.core.scene.go('h');
+YT.test('bars reflect profile values within one frame',function(){ Y.profile.data.hp=40; Y.profile.data.stamina=61; Y.profile.data.energy=12; Y.profile.data.money=345; YT.step(1); YT.eq(Hd.last,{hp:40,stamina:61,energy:12,money:345}); });
+YT.test('toasts never overlap (max 3); 4th waits, shows after 2.5 s',function(){ ['one','two','three','four'].forEach(Hd.toast); YT.eq(Hd.visible.length,3); YT.eq(Hd.queue.length,1); YT.step(1); var ys=Hd.lastToastYs; YT.ok(Math.abs(ys[0]-ys[1])>=26&&Math.abs(ys[1]-ys[2])>=26,'spacing'); YT.secs(2.6); YT.ok(Hd.visible.some(function(t){return t.msg==='four';}),'4th shown'); YT.secs(3); YT.eq(Hd.visible.length,0); });
+YT.test('pause stops core updates (YOUR.core paused flag)',function(){ YT.tap('Escape'); YT.ok(Hd.pauseOpen&&Y.core.paused,'paused'); var u=Y.core.stats.updates,t=1000; for(var i=0;i<30;i++){t+=16.7;Y.core.tick(t);} YT.eq(Y.core.stats.updates,u); window.__t=t; });
+YT.test('Save from pause writes storage and toasts "Saved"',function(){ localStorage.removeItem(Y.profile.SAVE_KEY); var t=window.__t; function k(code){ YOUR.input.simKey(code,true); t+=16.7; Y.core.tick(t); YOUR.input.simKey(code,false); t+=16.7; Y.core.tick(t); }
+  k('KeyS'); YT.eq(Hd.sel,1); k('KeyJ'); YT.ok(localStorage.getItem(Y.profile.SAVE_KEY),'saved'); YT.ok(Hd.visible.some(function(x){return x.msg==='Saved';}),'toast'); k('Escape'); YT.ok(!Hd.pauseOpen&&!Y.core.paused,'resumed'); });
+YT.test('journal overlay lists profile log and blocks gameplay',function(){ Y.profile.earn(45,'job'); Hd.toggleJournal(); YT.ok(Hd.blocking()); YT.step(1); Hd.toggleJournal(); YT.ok(!Hd.blocking()); });
+YT.test('respects safe-area insets (layout inside canvas minus margins)',function(){ Hd.safe={t:30,r:0,b:20,l:24}; var L=Hd.layout(); YT.ok(L.x>=12+24/Y.core.view.s-1e-9&&L.y>=12+30/Y.core.view.s-1e-9,'insets'); Hd.safe={t:0,r:0,b:0,l:0}; });
+/* representative frame for the screenshot (runs after tests) */
+var frameFn=function(){
+Y.profile.data.hp=72; Y.profile.data.stamina=40; Y.profile.data.energy=58; Hd.toast('+$45 job'); Hd.toast('Stocked 5/5'); YT.step(1); Hd.openPause(); Y.core.render();
+};
+}catch(e){ console.error("test page setup failed",e); YT.test("page setup",function(){throw e;}); }
+await YT.run();
+try{ if(typeof frameFn==="function")frameFn(); }catch(e){ console.error("frame render failed",e); }
+window.__frameDone=true;
+})();
+</script>
+</body></html>

@@ -1,0 +1,37 @@
+<!doctype html><html><head><meta charset="utf-8"><title>B13 fusion_hub — YOUR · PROPOSAL_HOLD</title>
+<style>body{margin:0;background:#0b0c10;color:#ddd;font:13px system-ui}#stage{width:960px;height:540px;position:relative;background:#000}#results{padding:8px 12px;max-width:940px;line-height:1.5}.p{color:#7dffb0}.f{color:#ff5d73}</style>
+<script>window.__g0=Object.keys(window);</script></head>
+<body><div id="stage"><canvas id="c"></canvas></div><div id="results">running…</div>
+<script src="../modules/your_config.js"></script>
+<script src="../modules/your_core.js"></script>
+<script src="../modules/your_testkit.js"></script>
+<script src="../modules/your_input.js"></script>
+<script src="../modules/your_profile.js"></script>
+<script src="../modules/your_hud.js"></script>
+<script src="../modules/your_hub.js"></script>
+<script>
+(async function(){
+"use strict";
+var Y=window.YOUR;
+try{
+
+await YT.boot();
+YT.freshProfile('Season'); var H=Y.hub;
+YT.test('report() for 4 activities advances exactly one week and records W/L',function(){ YT.eq(H.current().part,'job'); H.report('skate',{win:true}); H.report('football',{win:true}); H.report('arena',{win:false}); YT.eq(H.state().week,0,'free play does not advance'); var r=H.report('job',{win:true}); YT.ok(r.scheduled); YT.eq(H.state().week,1); YT.eq(H.state().results,['W']); YT.eq(H.state().rec.arena,{w:0,l:1}); });
+YT.test('PHATOM week rewards: xp 40+12k, coins 15+6k',function(){ YT.eq([H.WEEKS[0].xp,H.WEEKS[0].coins,H.WEEKS[3].xp,H.WEEKS[3].coins],[40,15,76,33]); YT.ok(H.WEEKS[9].final); });
+YT.test('a buff earned in skate is consumed by the next (different) activity only',function(){ YT.eq(H.current().part,'skate'); var r=H.report('skate',{win:true,buffKind:'pow'}); YT.eq(r.buffEarned,'pow'); YT.eq(H.state().buff.from,'skate'); H.report('skate',{win:true}); YT.ok(H.state().buff&&H.state().buff.uses===1,'not consumed by skate'); YT.ok(H.activeBuff('arena'),'visible to next activity');
+  var r2=H.report('arena',{win:true}); YT.eq(r2.buffUsed,'pow'); YT.eq(H.state().buff,null); });
+YT.test('rival +1 on a scheduled loss; difficulty multiplier stays within 0.75–1.3',function(){ var s=H.state(),r0=s.rival; YT.eq(H.current().part,'football'); H.report('football',{win:false}); YT.eq(s.rival,r0+1); YT.eq(s.results[2],'L'); s.rival=100; YT.eq(H.speedFor(),1.3); s.rival=0; Y.profile.data.lvl=40; YT.eq(H.speedFor(),0.75); Y.profile.data.lvl=1; YT.ok(H.speedFor()>=0.75&&H.speedFor()<=1.3); });
+YT.test('state persists through YOUR.profile.save()',function(){ Y.profile.save(); var s=JSON.parse(localStorage.getItem(Y.profile.SAVE_KEY)).hub; YT.eq(s.week,H.state().week); YT.eq(s.results,H.state().results); });
+YT.test('scheduled win pays PHATOM coins into money and XP into the shared profile',function(){ var m=Y.profile.data.money,wk=H.current(); H.report(wk.part,{win:true}); YT.eq(Y.profile.data.money,m+wk.coins); });
+/* representative frame for the screenshot (runs after tests) */
+var frameFn=function(){
+Y.core.scene.go('hub'); YT.step(1);
+};
+}catch(e){ console.error("test page setup failed",e); YT.test("page setup",function(){throw e;}); }
+await YT.run();
+try{ if(typeof frameFn==="function")frameFn(); }catch(e){ console.error("frame render failed",e); }
+window.__frameDone=true;
+})();
+</script>
+</body></html>

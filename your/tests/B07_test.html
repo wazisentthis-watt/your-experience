@@ -1,0 +1,40 @@
+<!doctype html><html><head><meta charset="utf-8"><title>B07 day_economy — YOUR · PROPOSAL_HOLD</title>
+<style>body{margin:0;background:#0b0c10;color:#ddd;font:13px system-ui}#stage{width:960px;height:540px;position:relative;background:#000}#results{padding:8px 12px;max-width:940px;line-height:1.5}.p{color:#7dffb0}.f{color:#ff5d73}</style>
+<script>window.__g0=Object.keys(window);</script></head>
+<body><div id="stage"><canvas id="c"></canvas></div><div id="results">running…</div>
+<script src="../modules/your_config.js"></script>
+<script src="../modules/your_core.js"></script>
+<script src="../modules/your_testkit.js"></script>
+<script src="../modules/your_input.js"></script>
+<script src="../modules/your_profile.js"></script>
+<script src="../modules/your_npc.js"></script>
+<script src="../modules/your_hud.js"></script>
+<script src="../modules/your_day.js"></script>
+<script>
+(async function(){
+"use strict";
+var Y=window.YOUR;
+try{
+
+await YT.boot();
+YT.freshProfile('Day Tester'); var D=Y.day;
+var sc={update:function(dt){D.update(dt);},render:function(g){ g.fillStyle='#1b2433'; g.fillRect(0,0,960,540); g.fillStyle='#ffd166'; g.font='bold 22px system-ui'; g.fillText('Day / economy (B07) — clock '+D.clock(),30,120); g.font='15px system-ui'; g.fillStyle='#dde';
+  Object.keys(D.PAY).forEach(function(a,i){ g.fillText(a+': pay $'+D.PAY[a]+' (Y.O.U.R.) · xp '+D.XP[a]+' · energy cost '+D.COST[a]+' (PROPOSED)',30,160+i*24); }); Y.hud.render(g); }};
+Y.core.scene.register('d',sc); Y.core.scene.go('d');
+YT.test('payout table equals {job:45,skate:30,football:50,arena:60}',function(){ YT.eq(D.PAY,{job:45,skate:30,football:50,arena:60}); });
+YT.test('sleep() increments day by exactly 1, restores energy and saves',function(){ var d0=Y.profile.data.day; Y.profile.data.energy=3; D.sleep(); YT.eq(Y.profile.data.day,d0+1); YT.eq(Y.profile.data.energy,100); YT.eq(JSON.parse(localStorage.getItem(Y.profile.SAVE_KEY)).day,d0+1); YT.eq(D.clock(),'06:00'); });
+YT.test('activity start is refused with a toast if energy < cost',function(){ Y.profile.data.energy=5; YT.eq(D.start('arena'),false); YT.ok(Y.hud.visible.concat(Y.hud.queue).some(function(t){return /Too tired/.test(t.msg);}),'toast'); Y.profile.data.energy=100; YT.eq(D.start('arena'),true); YT.eq(Y.profile.data.energy,75); });
+YT.test('complete() pays the table amount and sets the Y.O.U.R. flag',function(){ var m=Y.profile.data.money; YT.eq(D.complete('football'),50); YT.eq(Y.profile.data.money,m+50); YT.ok(Y.profile.data.flags.football); D.complete('arena'); YT.ok(Y.profile.data.flags.combat,'arena→combat flag'); });
+YT.test('clock pauses while a dialogue or menu is open',function(){ var m0=D.minutes; YT.step(60); YT.near(D.minutes,m0+2,1e-6,'advances 2 game-min / s'); Y.npc.talk('mara'); var m1=D.minutes; YT.step(120); YT.eq(D.minutes,m1,'dialogue'); Y.npc.close(); D.menuOpen=true; YT.step(60); YT.eq(D.minutes,m1,'menu'); D.menuOpen=false; YT.step(60); YT.ok(D.minutes>m1); });
+YT.test('forced sleep at 24:00 and at 0 energy',function(){ var d0=Y.profile.data.day; D.minutes=1439.9; YT.step(5); YT.eq(Y.profile.data.day,d0+1,'midnight'); Y.profile.data.energy=0; YT.step(1); YT.eq(Y.profile.data.day,d0+2,'exhausted'); });
+/* representative frame for the screenshot (runs after tests) */
+var frameFn=function(){
+D.minutes=17*60+20; Y.profile.data.energy=55; Y.hud.toast('Day '+Y.profile.data.day+' — saved'); YT.step(1);
+};
+}catch(e){ console.error("test page setup failed",e); YT.test("page setup",function(){throw e;}); }
+await YT.run();
+try{ if(typeof frameFn==="function")frameFn(); }catch(e){ console.error("frame render failed",e); }
+window.__frameDone=true;
+})();
+</script>
+</body></html>

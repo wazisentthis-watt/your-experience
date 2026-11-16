@@ -1,0 +1,41 @@
+<!doctype html><html><head><meta charset="utf-8"><title>B04 character_animator — YOUR · PROPOSAL_HOLD</title>
+<style>body{margin:0;background:#0b0c10;color:#ddd;font:13px system-ui}#stage{width:960px;height:540px;position:relative;background:#000}#results{padding:8px 12px;max-width:940px;line-height:1.5}.p{color:#7dffb0}.f{color:#ff5d73}</style>
+<script>window.__g0=Object.keys(window);</script></head>
+<body><div id="stage"><canvas id="c"></canvas></div><div id="results">running…</div>
+<script src="../modules/your_config.js"></script>
+<script src="../modules/your_core.js"></script>
+<script src="../modules/your_testkit.js"></script>
+<script src="../modules/your_input.js"></script>
+<script src="../modules/your_character.js"></script>
+<script>
+(async function(){
+"use strict";
+var Y=window.YOUR;
+try{
+
+await YT.boot();
+var ch=new Y.Character({x:300,y:300}); ch.sheet=Y.SpriteSheet.fromConfig();
+var ch2=new Y.Character({x:600,y:300}); var sc={update:function(dt){ ch.update(dt,Y.input.held('moveX'),Y.input.held('moveY')); ch2.update(dt,Y.input.held('moveX'),Y.input.held('moveY')); },
+ render:function(g){ g.fillStyle='#3c5a3a'; g.fillRect(0,0,960,540); ch.draw(g); if(ch2.sheet)ch2.draw(g); g.fillStyle='#fff'; g.font='14px system-ui'; g.fillText('left: neutral placeholder · right: WishBorn hero sheet (library) — PROPOSAL_HOLD placeholder, main character undecided',20,520); g.fillText('anim '+ch.anim(),20,30); }};
+Y.core.scene.register('t',sc); Y.core.scene.go('t');
+YT.test('walking in each of 4 directions shows that direction row; idle shows frame 0',function(){ var rows={down:0,up:1,left:2,right:3},keys={down:'KeyS',up:'KeyW',left:'KeyA',right:'KeyD'};
+  Object.keys(keys).forEach(function(d){ YT.down(keys[d]); YT.step(10); YT.eq(ch.face,d); YT.eq(ch.state,'walk'); var r=ch.sheet.frameRect(ch.anim(),ch.t); YT.eq(Math.floor(r.index/4),rows[d],'row '+d); YT.up(keys[d]); YT.step(1);
+    YT.eq(ch.state,'idle'); YT.eq(ch.sheet.frameRect(ch.anim(),ch.t).index,rows[d]*4,'idle frame 0'); }); });
+YT.test('animation runs at 8 fps independent of update rate',function(){ var a=new Y.Character(),b=new Y.Character(); a.sheet=b.sheet=ch.sheet; for(var i=0;i<50;i++)a.update(1/60,1,0); for(var j=0;j<25;j++)b.update(1/30,1,0); YT.eq(a.sheet.frameRect(a.anim(),a.t).i,2,'t=0.833 s → frame 6%4');
+  YT.eq(a.sheet.frameRect(a.anim(),a.t).i,b.sheet.frameRect(b.anim(),b.t).i); YT.eq(ch.sheet.frameRect('walk_down',0.125+1e-6).i,1); YT.eq(ch.sheet.frameRect('walk_down',0.5+1e-6).i,0); });
+YT.test('cannot enter a solid tile; slides along walls',function(){ var c=new Y.Character({x:150,y:200}),solid=function(x,y){return x>=200;}; for(var i=0;i<120;i++)c.update(1/60,1,0,solid); YT.ok(c.x<200-c.feet.w/2+0.001,'stopped at wall x='+c.x);
+  var y0=c.y; for(var k=0;k<30;k++)c.update(1/60,0.7,0.7,solid); YT.ok(c.y>y0+20,'slid along wall'); YT.ok(c.x<200,'still outside'); });
+YT.test('speed is 140 px/s (PROPOSED)',function(){ var c=new Y.Character({x:0,y:0}); for(var i=0;i<60;i++)c.update(1/60,1,0); YT.near(c.x,140,0.01); });
+YT.test('swapping the sheet (config.hero = "wishborn" library sheet) works without code changes',function(){ Y.config.hero='wishborn'; ch2.sheet=Y.SpriteSheet.fromConfig(); YT.eq([ch2.sheet.frameW,ch2.sheet.frameH],[72,96]); var r=ch2.draw(Y.core.ctx); YT.ok(r&&r.sw===72,'draw'); Y.config.hero='neutral'; });
+YT.test('placeholder art is labelled PROPOSAL_HOLD (config.status) and swappable label recorded',function(){ YT.eq(Y.config.status,'PROPOSAL_HOLD'); YT.eq(ch.sheet.label,'neutral'); });
+/* representative frame for the screenshot (runs after tests) */
+var frameFn=function(){
+ch.x=300; ch.y=320; ch2.x=620; ch2.y=340; ch2.scale=1.5; YT.down('KeyS'); YT.step(9); YT.up('KeyS'); YT.step(1);
+};
+}catch(e){ console.error("test page setup failed",e); YT.test("page setup",function(){throw e;}); }
+await YT.run();
+try{ if(typeof frameFn==="function")frameFn(); }catch(e){ console.error("frame render failed",e); }
+window.__frameDone=true;
+})();
+</script>
+</body></html>

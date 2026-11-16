@@ -1,0 +1,42 @@
+<!doctype html><html><head><meta charset="utf-8"><title>B10 football_practice — YOUR · PROPOSAL_HOLD</title>
+<style>body{margin:0;background:#0b0c10;color:#ddd;font:13px system-ui}#stage{width:960px;height:540px;position:relative;background:#000}#results{padding:8px 12px;max-width:940px;line-height:1.5}.p{color:#7dffb0}.f{color:#ff5d73}</style>
+<script>window.__g0=Object.keys(window);</script></head>
+<body><div id="stage"><canvas id="c"></canvas></div><div id="results">running…</div>
+<script src="../modules/your_config.js"></script>
+<script src="../modules/your_core.js"></script>
+<script src="../modules/your_testkit.js"></script>
+<script src="../modules/your_input.js"></script>
+<script src="../modules/your_character.js"></script>
+<script src="../modules/your_world.js"></script>
+<script src="../modules/your_profile.js"></script>
+<script src="../modules/your_hud.js"></script>
+<script src="../modules/your_day.js"></script>
+<script src="../modules/your_fair.js"></script>
+<script src="../modules/your_football.js"></script>
+<script>
+(async function(){
+"use strict";
+var Y=window.YOUR;
+try{
+
+await YT.boot();
+YT.freshProfile('Runner'); Y.core.scene.register('world',Y.world.makeScene()); var F=Y.football;
+Y.core.scene.go('football');
+YT.test('2 touchdowns → payout 50 once, then back to world',function(){ var m=Y.profile.data.money; F.P.y=59; YT.step(1); YT.eq(F.td,1); F.P.y=59; YT.step(1); YT.eq(F.td,2); YT.ok(F.over); YT.eq(Y.profile.data.money,m+50); YT.step(30); YT.eq(Y.profile.data.money,m+50,'once'); YT.tap('KeyJ'); YT.eq(Y.core.scene.name,'world'); });
+YT.test('defenders never overlap (min separation ≥ 30 px every frame)',function(){ Y.day.sleep(); Y.core.scene.go('football',{free:true}); var minSep=1e9; YT.down('KeyW'); for(var i=0;i<600;i++){ YT.step(1); if(i%90===0){YT.up('KeyW');YT.down(i%180?'KeyA':'KeyD');} minSep=Math.min(minSep,F.minSeparation()); } ['KeyW','KeyA','KeyD'].forEach(YT.up); YT.ok(minSep>=F.SEP-0.5,'min '+minSep.toFixed(2)); });
+YT.test('tackle resets the drill (Y.O.U.R. 28 px rule)',function(){ Y.core.scene.go('football',{free:true}); var d=F.def[0]; F.P.x=d.x; F.P.y=d.y+10; var t0=F.tries; YT.step(1); YT.eq(F.tries,t0+1); YT.eq([F.P.x,F.P.y],[210,940]); });
+YT.test('juke has a 0.6 s cooldown and costs 20 stamina (Y.O.U.R. dodge cost)',function(){ Y.core.scene.go('football',{free:true}); Y.profile.data.stamina=100; YT.ok(F.juke('juke')); YT.eq(Y.profile.data.stamina,80); YT.eq(F.juke('juke'),false,'cooldown'); YT.secs(0.62); YT.ok(F.juke('spin'),'after cooldown'); YT.ok(Y.profile.data.stamina<95); Y.profile.data.stamina=5; YT.secs(0.62); Y.profile.data.stamina=5; YT.eq(F.juke('juke'),false,'no stamina'); });
+YT.test('project() maps field → screen with depth scaling (far players smaller)',function(){ F.cam.y=900; var near=F.project(210,900),far=F.project(210,300); YT.ok(near.scale>far.scale,'scale'); YT.ok(near.y>far.y,'far is higher on screen'); YT.ok(Math.abs(F.project(0,600).x-F.project(420,600).x)>Math.abs(F.project(0,200).x-F.project(420,200).x),'perspective width'); });
+YT.test('only library sprites without flags are configured (no excluded-IP sheets)',function(){ Object.values(Y.config.assets).forEach(function(p){ YT.ok(!/flag|galaxy|green_?22|jacksonville|static|fusion|kito|beerus/i.test(p),p); }); });
+YT.test('Equity Line (rulebook §5) shown for football, payout unchanged',function(){ YT.ok(F.equity&&F.equity.visibleToBoth&&/field|coverage|anchor|route|weather/i.test(F.equity.label),JSON.stringify(F.equity)); YT.eq(Y.fair.applyPayout('football',50),50); });
+/* representative frame for the screenshot (runs after tests) */
+var frameFn=function(){
+Y.core.scene.go('football',{free:true}); YT.down('KeyW'); YT.down('KeyD'); YT.step(40); YT.up('KeyD'); YT.step(15); YT.tap('KeyL'); YT.step(3); YT.up('KeyW');
+};
+}catch(e){ console.error("test page setup failed",e); YT.test("page setup",function(){throw e;}); }
+await YT.run();
+try{ if(typeof frameFn==="function")frameFn(); }catch(e){ console.error("frame render failed",e); }
+window.__frameDone=true;
+})();
+</script>
+</body></html>

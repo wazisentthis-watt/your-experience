@@ -1,0 +1,39 @@
+<!doctype html><html><head><meta charset="utf-8"><title>B01 core_shell — YOUR · PROPOSAL_HOLD</title>
+<style>body{margin:0;background:#0b0c10;color:#ddd;font:13px system-ui}#stage{width:960px;height:540px;position:relative;background:#000}#results{padding:8px 12px;max-width:940px;line-height:1.5}.p{color:#7dffb0}.f{color:#ff5d73}</style>
+<script>window.__g0=Object.keys(window);</script></head>
+<body><div id="stage"><canvas id="c"></canvas></div><div id="results">running…</div>
+<script src="../modules/your_config.js"></script>
+<script src="../modules/your_core.js"></script>
+<script src="../modules/your_testkit.js"></script>
+<script>
+(async function(){
+"use strict";
+var Y=window.YOUR;
+try{
+
+await YT.boot();
+var log=window.__log=[];
+var mk=function(n,col){ return {enter:function(){log.push('enter:'+n);},exit:function(){log.push('exit:'+n);},update:function(){},render:function(g){g.fillStyle=col;g.fillRect(0,0,960,540);g.fillStyle='#fff';g.font='bold 48px system-ui';g.textAlign='center';g.fillText('Scene '+n.toUpperCase(),480,250);g.font='18px system-ui';g.fillText('press N to switch · fixed 60 Hz · letterboxed 960x540',480,300);}}; };
+Y.core.scene.register('a',mk('a','#24476b')); Y.core.scene.register('b',mk('b','#6b2447'));
+window.addEventListener('keydown',function(e){ if(e.code==='KeyN')Y.core.scene.go(Y.core.scene.name==='a'?'b':'a'); });
+Y.core.scene.go('a');
+YT.test('offline: every loaded resource is local (file:)',function(){ var bad=performance.getEntriesByType('resource').filter(function(r){return !/^(file|data|blob):/.test(r.name);}); YT.eq(bad.length,0,'external resources'); });
+YT.test('scene.go("b") calls exit(a) then enter(b) exactly once each',function(){ log.length=0; Y.core.scene.go('b'); YT.eq(log,['exit:a','enter:b']); YT.eq(window.__log.filter(function(x){return x==='enter:b';}).length,1); });
+YT.test('key N switches scenes',function(){ window.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyN'})); YT.eq(Y.core.scene.name,'a'); });
+YT.test('at 30 fps throttle update() still runs ~60/s (55–65)',function(){ Y.core._last=null; var u0=Y.core.stats.updates,t=1000; Y.core.tick(t); for(var i=0;i<60;i++){t+=1000/30;Y.core.tick(t);} var ups=(Y.core.stats.updates-u0)/2; window.__ups=ups; YT.ok(ups>=55&&ups<=65,'ups '+ups); });
+YT.test('max 5 catch-up steps per frame',function(){ Y.core._last=null; Y.core.tick(0); var n=Y.core.tick(200); YT.ok(n<=5,'steps '+n); });
+YT.test('resize keeps 16:9 logical view and full-res backing store at DPR 2',function(){ Y.core.resize(2); var c=Y.core.canvas,v=Y.core.view; YT.eq(c.width,Math.round(v.cssW*2)); YT.near((960*v.s)/(540*v.s),16/9,1e-9); YT.ok(960*v.s<=v.cssW+0.01&&540*v.s<=v.cssH+0.01,'fits'); Y.core.resize(); });
+YT.test('blur pauses; focus resumes without a time jump >100 ms',function(){ window.dispatchEvent(new Event('blur')); YT.ok(Y.core.paused,'paused'); var u0=Y.core.stats.updates; Y.core.tick(5000); Y.core.tick(9000); YT.eq(Y.core.stats.updates,u0,'no updates while paused');
+  window.dispatchEvent(new Event('focus')); YT.ok(!Y.core.paused,'resumed'); Y.core.tick(20000); var n=Y.core.tick(20000+1000/60); YT.ok(n<=1,'steps after resume '+n); YT.ok((Y.core.stats.updates-u0)*1000/60<=100,'time jump'); });
+YT.test('asset loader reports progress to 1 and returns images',async function(){ var p=[]; await Y.core.assets.load({rider_atlas:Y.config.assets.rider_atlas},function(x){p.push(x);}); YT.eq(p[p.length-1],1); YT.ok(Y.core.assets.get('rider_atlas').width===384,'atlas width'); });
+/* representative frame for the screenshot (runs after tests) */
+var frameFn=function(){
+Y.core.scene.go('a'); Y.core.stepFixed(1);
+};
+}catch(e){ console.error("test page setup failed",e); YT.test("page setup",function(){throw e;}); }
+await YT.run();
+try{ if(typeof frameFn==="function")frameFn(); }catch(e){ console.error("frame render failed",e); }
+window.__frameDone=true;
+})();
+</script>
+</body></html>

@@ -1,0 +1,34 @@
+<!doctype html><html><head><meta charset="utf-8"><title>B15 audio — YOUR · PROPOSAL_HOLD</title>
+<style>body{margin:0;background:#0b0c10;color:#ddd;font:13px system-ui}#stage{width:960px;height:540px;position:relative;background:#000}#results{padding:8px 12px;max-width:940px;line-height:1.5}.p{color:#7dffb0}.f{color:#ff5d73}</style>
+<script>window.__g0=Object.keys(window);</script></head>
+<body><div id="stage"><canvas id="c"></canvas></div><div id="results">running…</div>
+<script src="../modules/your_config.js"></script>
+<script src="../modules/your_core.js"></script>
+<script src="../modules/your_testkit.js"></script>
+<script src="../modules/your_audio.js"></script>
+<script>
+(async function(){
+"use strict";
+var Y=window.YOUR;
+try{
+
+await YT.boot({assets:false});
+var A=Y.audio;
+YT.test('sfx() before unlock is a silent no-op (no errors)',function(){ YT.eq(A.unlocked,false); Object.keys(A.RECIPES).forEach(function(n){ YT.eq(A.sfx(n),false); }); YT.eq(A.played.length,0); });
+YT.test('unlock on first input, then every named sfx plays',function(){ window.dispatchEvent(new KeyboardEvent('keydown',{code:'KeyJ'})); YT.ok(A.unlocked,'unlocked'); A.setMuted(false); ['step','pickup','coin','hit','whistle','ollie','land','bail','menu'].forEach(function(n){ YT.ok(A.sfx(n),n); }); YT.eq(A.played.length,9); });
+YT.test('mute persists in localStorage and silences sfx',function(){ A.setMuted(true); YT.eq(localStorage.getItem('your-audio-mute'),'1'); YT.eq(A.sfx('coin'),false); A.toggleMute(); YT.eq(localStorage.getItem('your-audio-mute'),'0'); YT.ok(A.sfx('coin')); });
+YT.test('each named sfx has a distinct recipe (automated) — audible check listed in BUILDS_REPORT',function(){ var sig=Object.keys(A.RECIPES).map(function(n){var r=A.RECIPES[n];return [r.type,r.f0,r.f1,r.dur,r.noise,!!r.vib,!!r.two].join('|');}); YT.eq(new Set(sig).size,sig.length); YT.eq(Object.keys(A.RECIPES).length,9); });
+YT.test('no network or audio-file loads (procedural only)',function(){ var res=performance.getEntriesByType('resource'); YT.ok(res.every(function(r){return /^file:/.test(r.name)&&/\.js$/.test(r.name);}),res.map(function(r){return r.name;}).join(',')); });
+YT.test('master volume clamps 0..1',function(){ A.setVolume(3); YT.eq(A.master,1); A.setVolume(-1); YT.eq(A.master,0); A.setVolume(0.7); });
+/* representative frame for the screenshot (runs after tests) */
+var frameFn=function(){
+var g=Y.core.ctx; Y.core.beginRender(); g.fillStyle='#14161f'; g.fillRect(0,0,960,540); g.fillStyle='#ffd166'; g.font='bold 22px system-ui'; g.fillText('YOUR.audio (B15) — procedural WebAudio, no files',30,44); g.font='15px monospace'; g.fillStyle='#dde';
+Object.keys(A.RECIPES).forEach(function(n,i){ var r=A.RECIPES[n]; g.fillText(n.padEnd(8)+' '+r.type.padEnd(9)+' '+r.f0+'→'+r.f1+' Hz  '+r.dur+' s  noise '+r.noise,30,90+i*26); }); g.fillText('muted: '+A.muted+'  master: '+A.master+'  unlocked: '+A.unlocked,30,350); Y.core.endRender();
+};
+}catch(e){ console.error("test page setup failed",e); YT.test("page setup",function(){throw e;}); }
+await YT.run();
+try{ if(typeof frameFn==="function")frameFn(); }catch(e){ console.error("frame render failed",e); }
+window.__frameDone=true;
+})();
+</script>
+</body></html>

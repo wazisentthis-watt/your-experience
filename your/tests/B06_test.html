@@ -1,0 +1,45 @@
+<!doctype html><html><head><meta charset="utf-8"><title>B06 npc_dialogue — YOUR · PROPOSAL_HOLD</title>
+<style>body{margin:0;background:#0b0c10;color:#ddd;font:13px system-ui}#stage{width:960px;height:540px;position:relative;background:#000}#results{padding:8px 12px;max-width:940px;line-height:1.5}.p{color:#7dffb0}.f{color:#ff5d73}</style>
+<script>window.__g0=Object.keys(window);</script></head>
+<body><div id="stage"><canvas id="c"></canvas></div><div id="results">running…</div>
+<script src="../modules/your_config.js"></script>
+<script src="../modules/your_core.js"></script>
+<script src="../modules/your_testkit.js"></script>
+<script src="../modules/your_input.js"></script>
+<script src="../modules/your_character.js"></script>
+<script src="../modules/your_world.js"></script>
+<script src="../modules/your_profile.js"></script>
+<script src="../modules/your_npc.js"></script>
+<script>
+(async function(){
+"use strict";
+var Y=window.YOUR;
+try{
+
+await YT.boot();
+
+YT.freshProfile('Walker');
+var sc=Y.core.scene.register('world',Y.world.makeScene()); Y.core.scene.go('world');
+var P=sc.player;
+
+var N=Y.npc; N.setup(); var mara=N.list[0];
+function nearMara(){ P.x=mara.x-30; P.y=mara.y; mara.home.r=0; mara.tx=mara.x; mara.ty=mara.y; }
+YT.test('talking freezes player movement and resumes after close',function(){ nearMara(); YT.tap('KeyJ'); YT.ok(N.isOpen(),'open'); var x0=P.x; YT.down('KeyD'); YT.step(30); YT.up('KeyD'); YT.eq(P.x,x0,'frozen');
+  var guard=0; while(N.isOpen()&&guard++<20){ YT.tap('KeyJ'); YT.tap('KeyJ'); } YT.ok(!N.isOpen(),'closed'); P.x-=0; var x1=P.x; YT.down('KeyA'); YT.step(20); YT.up('KeyA'); YT.ok(P.x<x1-20,'moves again'); });
+YT.test('typewriter: first A mid-line shows full line, second A advances',function(){ nearMara(); YT.tap('KeyJ'); var o=N.open; YT.ok(o.shown<o.full.length,'partial'); YT.tap('KeyJ'); YT.eq(o.i,0); YT.eq(Math.floor(o.shown),o.full.length); YT.tap('KeyJ'); YT.eq(o.i,1,'advanced'); });
+YT.test('choice changes profile.rel and persists via YOUR.profile.save()',function(){ var o=N.open; YT.ok(o.lines[o.i].choices,'choice line'); YT.step(400); var r0=Y.profile.data.rel.mara||0; YT.tap('KeyJ'); YT.eq(Y.profile.data.rel.mara,r0+1); YT.eq(JSON.parse(localStorage.getItem(Y.profile.SAVE_KEY)).rel.mara,r0+1); YT.ok(!N.isOpen()); });
+YT.test('choice cursor moves with up/down',function(){ nearMara(); YT.tap('KeyJ'); YT.tap('KeyJ'); YT.tap('KeyJ'); YT.step(400); YT.tap('KeyS'); YT.eq(N.open.sel,1); var r0=Y.profile.data.rel.mara||0; YT.tap('KeyJ'); YT.eq(Y.profile.data.rel.mara,r0,'choice B is rel +0'); });
+YT.test('no dialogue text beyond the Y.O.U.R. excerpt; extra choices are [TODO ...] placeholders',function(){ var allowed=["Hey {name}! Welcome to the neighborhood. Dex needs help at the Corner Store, the skate park is open, coaches run practice at the Training Facility, and the Arena has a drone that needs a lesson.","Dodge its attacks, then hit it while it recovers. Button mashing wears you out.","You did all of it, {name}. Job, skating, practice and the arena. Go home and sleep, the neighborhood will remember.","Need a hand. Grab the 5 crates on the floor and stock the shelf on the left. $45 for the shift.","Keep going, {left} crates left.","Thanks again! Come back tomorrow."];
+  Object.keys(N.DIALOG).forEach(function(n){ Object.keys(N.DIALOG[n]).forEach(function(k){ N.DIALOG[n][k].forEach(function(L){ YT.ok(allowed.indexOf(L.text)>=0,'unexpected text: '+L.text); (L.choices||[]).forEach(function(c){ YT.ok(/^\[TODO/.test(c.label),'choice '+c.label); }); }); }); }); });
+YT.test('Dex line reflects crate progress (Y.O.U.R. storeCount)',function(){ Y.profile.data.flags.storeCount=2; N.talk('dex'); YT.eq(N.open.full,'Keep going, 3 crates left.'); N.close(); delete Y.profile.data.flags.storeCount; });
+/* representative frame for the screenshot (runs after tests) */
+var frameFn=function(){
+nearMara(); Y.world.follow(P,true); YT.tap('KeyJ'); YT.step(90);
+};
+}catch(e){ console.error("test page setup failed",e); YT.test("page setup",function(){throw e;}); }
+await YT.run();
+try{ if(typeof frameFn==="function")frameFn(); }catch(e){ console.error("frame render failed",e); }
+window.__frameDone=true;
+})();
+</script>
+</body></html>

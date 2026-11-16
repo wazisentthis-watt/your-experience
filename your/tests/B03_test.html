@@ -1,0 +1,39 @@
+<!doctype html><html><head><meta charset="utf-8"><title>B03 profile_save — YOUR · PROPOSAL_HOLD</title>
+<style>body{margin:0;background:#0b0c10;color:#ddd;font:13px system-ui}#stage{width:960px;height:540px;position:relative;background:#000}#results{padding:8px 12px;max-width:940px;line-height:1.5}.p{color:#7dffb0}.f{color:#ff5d73}</style>
+<script>window.__g0=Object.keys(window);</script></head>
+<body><div id="stage"><canvas id="c"></canvas></div><div id="results">running…</div>
+<script src="../modules/your_config.js"></script>
+<script src="../modules/your_core.js"></script>
+<script src="../modules/your_testkit.js"></script>
+<script src="../modules/your_profile.js"></script>
+<script>
+(async function(){
+"use strict";
+var Y=window.YOUR;
+try{
+
+await YT.boot({assets:false});
+var phase=sessionStorage.getItem('b03phase');
+if(!phase){ localStorage.clear(); var p=Y.profile.create('Reload Test'); Y.profile.earn(45,'job'); Y.profile.gainXP(130); p.rel.mara=2; p.flags.job=true; Y.profile.save();
+  sessionStorage.setItem('b03expect',JSON.stringify(Y.profile.data)); sessionStorage.setItem('b03phase','2'); location.reload(); await new Promise(function(){}); }
+sessionStorage.removeItem('b03phase');
+var expect=JSON.parse(sessionStorage.getItem('b03expect'));
+YT.test('create → save → reload page → load returns deep-equal object',function(){ var got=Y.profile.load(); YT.eq(got,expect); YT.eq(got.money,65); YT.eq(got.lvl,2,'gainXP(130) crosses need 100'); });
+YT.test('spend(999999) returns false and money unchanged',function(){ var m=Y.profile.data.money; YT.eq(Y.profile.spend(999999),false); YT.eq(Y.profile.data.money,m); YT.eq(Y.profile.spend(5),true); YT.eq(Y.profile.data.money,m-5); });
+YT.test('corrupt JSON in storage → load() returns fresh profile, logs warning, no throw',function(){ localStorage.setItem(Y.profile.SAVE_KEY,'{not json'); var w0=Y.profile.warnings.length,got=Y.profile.load(); YT.eq(got.money,20); YT.eq(got.v,1); YT.ok(Y.profile.warnings.length===w0+1,'warning'); });
+YT.test('a v0 object without v (Y.O.U.R. snapshot shape) is migrated to v:1',function(){ localStorage.setItem(Y.profile.SAVE_KEY,JSON.stringify({P:{name:'Ana',money:85,xp:40},flags:{job:true},day:3,pos:{x:270,y:380}})); var got=Y.profile.load(); YT.eq(got.v,1); YT.eq([got.name,got.money,got.xp,got.day,got.flags.job],['Ana',85,40,3,true]); YT.ok('energy' in got&&'rel' in got,'new fields'); });
+YT.test('starting values come from Y.O.U.R. newPlayer (money 20, hp 100, stamina 100) + PHATOM fresh (lvl 1)',function(){ var p=Y.profile.create('X'); YT.eq([p.money,p.hp,p.stamina,p.lvl,p.xp,p.burst],[20,100,100,1,0,0]); });
+YT.test('event log keeps last 20',function(){ for(var i=0;i<30;i++)Y.profile.earn(1,'t'); YT.eq(Y.profile.data.log.length,20); });
+/* representative frame for the screenshot (runs after tests) */
+var frameFn=function(){
+sessionStorage.removeItem('b03expect');
+var g=Y.core.ctx; Y.core.beginRender(); g.fillStyle='#14161f'; g.fillRect(0,0,960,540); g.fillStyle='#ffd166'; g.font='bold 22px system-ui'; g.fillText('YOUR.profile (B03)',30,40); g.fillStyle='#dde'; g.font='14px monospace';
+JSON.stringify(Y.profile.data,null,1).split('\n').slice(0,26).forEach(function(l,i){g.fillText(l,30,72+i*17);}); Y.core.endRender();
+};
+}catch(e){ console.error("test page setup failed",e); YT.test("page setup",function(){throw e;}); }
+await YT.run();
+try{ if(typeof frameFn==="function")frameFn(); }catch(e){ console.error("frame render failed",e); }
+window.__frameDone=true;
+})();
+</script>
+</body></html>

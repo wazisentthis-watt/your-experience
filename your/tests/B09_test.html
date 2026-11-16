@@ -1,0 +1,47 @@
+<!doctype html><html><head><meta charset="utf-8"><title>B09 skate_run — YOUR · PROPOSAL_HOLD</title>
+<style>body{margin:0;background:#0b0c10;color:#ddd;font:13px system-ui}#stage{width:960px;height:540px;position:relative;background:#000}#results{padding:8px 12px;max-width:940px;line-height:1.5}.p{color:#7dffb0}.f{color:#ff5d73}</style>
+<script>window.__g0=Object.keys(window);</script></head>
+<body><div id="stage"><canvas id="c"></canvas></div><div id="results">running…</div>
+<script src="../modules/your_config.js"></script>
+<script src="../modules/your_core.js"></script>
+<script src="../modules/your_testkit.js"></script>
+<script src="../modules/your_input.js"></script>
+<script src="../modules/your_profile.js"></script>
+<script src="../modules/your_hud.js"></script>
+<script src="../modules/your_day.js"></script>
+<script src="../modules/your_skate.js"></script>
+<script>
+(async function(){
+"use strict";
+var Y=window.YOUR;
+try{
+
+await YT.boot();
+YT.freshProfile('Skater'); var S=Y.skate,C=S.C;
+Y.core.scene.go('skate',{free:true});
+function fall(r){ for(var g=0;g<300&&!r.grounded;g++)S.step(r,1/60,{}); return r; }
+YT.test('timer ends run at 45.0 s ±0.1 (no rings → timeout, no pay)',function(){ var m=Y.profile.data.money; YT.step(45*60+6); YT.eq(S.run.result,'timeout'); YT.near(S.run.endedAt,45,0.1); YT.eq(Y.profile.data.money,m); });
+YT.test('landing sideways beyond LAND_ALIGN (50°) bails and resets combo',function(){ Y.core.scene.go('skate',{free:true}); var r=S.r; r.bailT=0; r.slide=null; r.flip=-1; r.grounded=false; r.z=1; r.vz=-60; r.vx=150; r.vy=0; r.heading=Math.PI/2; S.addTrick(r,'OLLIE',25); fall(r);
+  YT.eq(r.state,'BAIL'); YT.eq(r.lastBail,'LANDED SIDEWAYS'); YT.eq(r.combo.list.length,0); });
+YT.test('hard landing (impact > 300) and incomplete flip bail; aligned landing does not',function(){ var r=S.newRider(400,300); r.grounded=false; r.z=1; r.vz=-350; r.vx=100; fall(r); YT.eq(r.lastBail,'HARD LANDING');
+  r=S.newRider(400,300); r.grounded=false; r.z=0.5; r.vz=-60; r.flip=0.3; fall(r); YT.eq(r.lastBail,'INCOMPLETE FLIP');
+  r=S.newRider(400,300); r.grounded=false; r.z=0.5; r.vz=-60; r.vx=150; r.heading=Math.PI+0.3; fall(r); YT.ok(r.state==='LAND','fakie within 50° lands: '+r.state); });
+YT.test('rail grind adds 50-50 to combo; combo banks on clean landing',function(){ var L=S.RAILS[0],r=S.newRider(L.x1+20,L.y1); r.grounded=false; r.z=L.h+6; r.vz=-20; r.vx=180; r.heading=0; S.addTrick(r,'OLLIE',25);
+  for(var i=0;i<3;i++)S.step(r,1/60,{}); YT.ok(r.slide,'sliding'); var guard=0; while(r.slide&&guard++<300)S.step(r,1/60,{}); YT.ok(r.combo.list.some(function(t){return t.name==='50-50';}),'50-50 in combo');
+  var expect=S.comboTotal(r),s0=r.score; guard=0; while((!r.grounded||r.landT>0||r.combo.list.length)&&guard++<300)S.step(r,1/60,{}); YT.eq(r.score,s0+expect,'banked'); YT.ok(expect>=Math.round((25+100)*1.25),'multiplier applied'); });
+YT.test('ollie from A release pops POP_BASE..POP_BASE+POP_CHARGE; kickflip (X in air) scores 240 on clean landing',function(){ Y.core.scene.go('skate',{free:true}); var r=S.r; YT.down('KeyJ'); YT.step(30); YT.up('KeyJ'); YT.step(1); YT.ok(!r.grounded,'airborne'); YT.ok(r.vz<=C.POP_BASE+C.POP_CHARGE,'vz');
+  YT.tap('KeyL'); YT.ok(r.flip>=0,'flip started'); var g=0; while(!r.grounded&&g++<200)YT.step(1); YT.ok(r.combo.list.some(function(t){return t.name==='KICKFLIP'&&t.pts===240;}),JSON.stringify(r.combo.list)); });
+YT.test('payout 30 exactly once per run completion (all 8 Y.O.U.R. rings)',function(){ Y.core.scene.go('skate',{free:true}); var m=Y.profile.data.money; S.run.rings.forEach(function(q){ S.r.x=q.x; S.r.y=q.y; S.r.z=q.z; S.r.grounded=q.z===0; YT.step(1); }); YT.eq(S.run.result,'complete'); YT.eq(Y.profile.data.money,m+30); YT.step(120); YT.eq(Y.profile.data.money,m+30,'once'); YT.ok(Y.profile.data.flags.skate); });
+YT.test('rider atlas frame chosen by state and heading (RIFFT rows ride/push/crouch/ollie/kickflip/grind)',function(){ var f=function(st,h){return S.frameFor({state:st,heading:h});};
+  YT.eq([f('RIDE',0).row,f('PUSH',0).row,f('CROUCH',0).row,f('OLLIE',0).row,f('KICKFLIP',0).row,f('GRIND',0).row,f('BAIL',0).row],[0,1,2,3,4,5,2]); YT.eq(f('RIDE',Math.PI/2).dir,'south'); YT.eq(f('RIDE',Math.PI).dir,'west'); });
+/* representative frame for the screenshot (runs after tests) */
+var frameFn=function(){
+Y.core.scene.go('skate',{free:true}); S.run.rings[0].got=true; S.run.rings[1].got=true; S.run.got=2; YT.down('KeyW'); YT.step(40); YT.up('KeyW'); YT.down('KeyJ'); YT.step(10); YT.up('KeyJ'); YT.step(8);
+};
+}catch(e){ console.error("test page setup failed",e); YT.test("page setup",function(){throw e;}); }
+await YT.run();
+try{ if(typeof frameFn==="function")frameFn(); }catch(e){ console.error("frame render failed",e); }
+window.__frameDone=true;
+})();
+</script>
+</body></html>

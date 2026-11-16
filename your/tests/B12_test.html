@@ -1,0 +1,46 @@
+<!doctype html><html><head><meta charset="utf-8"><title>B12 fafifi_rules — YOUR · PROPOSAL_HOLD</title>
+<style>body{margin:0;background:#0b0c10;color:#ddd;font:13px system-ui}#stage{width:960px;height:540px;position:relative;background:#000}#results{padding:8px 12px;max-width:940px;line-height:1.5}.p{color:#7dffb0}.f{color:#ff5d73}</style>
+<script>window.__g0=Object.keys(window);</script></head>
+<body><div id="stage"><canvas id="c"></canvas></div><div id="results">running…</div>
+<script src="../modules/your_config.js"></script>
+<script src="../modules/your_core.js"></script>
+<script src="../modules/your_testkit.js"></script>
+<script src="../modules/your_input.js"></script>
+<script src="../modules/your_profile.js"></script>
+<script src="../modules/your_hud.js"></script>
+<script src="../modules/your_day.js"></script>
+<script src="../modules/your_fair.js"></script>
+<script>
+(async function(){
+"use strict";
+var Y=window.YOUR;
+try{
+
+await YT.boot();
+YT.freshProfile('Fair'); var F=Y.fair, Q4={quarter:4,reality:80};
+YT.test('Perfect-30 meter math matches rulebook §5 table exactly',function(){ YT.eq(F.POINTS,{line_to_gain:3,shell_read:2,positive_secure:1,bond_exchange:1,sack:-3,tfl:-3,off_penalty:-3,turnover:-5}); var m=new F.Meter();
+  var seq=[['line_to_gain',3],['shell_read',5],['positive_secure',6],['bond_exchange',7],['bond_exchange',8],['bond_exchange',8],['sack',5],['turnover',0]]; seq.forEach(function(s){ YT.eq(m.add(s[0],Q4),s[1],s[0]); });
+  m.newDrive(); YT.eq(m.add('bond_exchange',Q4),1,'bond cap resets per drive'); for(var i=0;i<20;i++)m.add('line_to_gain',Q4); YT.eq(m.value,30,'cap 30'); });
+YT.test('meter only builds in Q4 at Reality 75+',function(){ var m=new F.Meter(); YT.eq(m.add('line_to_gain',{quarter:3,reality:90}),0); YT.eq(m.add('line_to_gain',{quarter:4,reality:74}),0); YT.eq(m.add('line_to_gain',Q4),3); });
+YT.test('full meter → one finish window (+180 ms readable) on next snap, then resets to 0',function(){ var m=new F.Meter('defense'); for(var i=0;i<10;i++)m.add('line_to_gain',Q4); YT.ok(m.armed); YT.eq(m.snap(),{readableMs:180,firstBreakHidden:false}); YT.eq(m.value,0); YT.eq(m.snap(),null); YT.eq(m.side,'defense'); });
+YT.test('Equity Line never changes payout amounts',function(){ ['job','skate','football','arena'].forEach(function(a){ [0,45,50,999].forEach(function(v){ YT.eq(F.applyPayout(a,v),v); }); }); var m=Y.profile.data.money; YT.eq(Y.day.complete('football'),50); YT.eq(Y.profile.data.money,m+50); var c=F.equity.pick('football',function(){return 0;}); YT.eq([c.id,c.visibleToBoth],['short_field',true]); });
+YT.test('Dependency broken → next linked action +120 ms or +2 energy (once); counters restore',function(){ var d=new F.Dependency(); YT.eq(d.nextLinkedAction(),{reactionMs:0,energy:0}); d.attack(true); YT.eq(d.nextLinkedAction(),{reactionMs:120,energy:0}); YT.eq(d.nextLinkedAction(),{reactionMs:0,energy:0},'once');
+  d.attack(true); YT.eq(d.nextLinkedAction('energy'),{reactionMs:0,energy:2}); d.attack(true); YT.ok(d.counter('protect_bond')); YT.eq(d.nextLinkedAction(),{reactionMs:0,energy:0}); });
+YT.test('Route Attack: reveal → branch only if read → finish/checkdown; first down preserves, sack ends against offense',function(){ var r=new F.RouteAttack(); r.play({}); YT.eq(r.consequence,'route_problem_revealed'); r.play({read:true}); YT.eq(r.branch,'safer_branch_offered'); r.play({finishRoute:false}); YT.eq([r.outcome,r.active],['forced_checkdown',false]); YT.ok(r.reward!=='first_down');
+  r=new F.RouteAttack(); r.play({}); r.play({firstDown:true}); YT.eq([r.outcome,r.consequence],['first_down','route_problem_revealed']); r=new F.RouteAttack(); r.play({negative:'sack'}); YT.eq(r.outcome,'ended_against_offense'); });
+YT.test('non-football activities are clearly-labelled pluggable stubs (no invented rules)',function(){ ['job','skate','arena'].forEach(function(a){ YT.ok(F.rulesFor(a).stub,a); YT.ok(/PENDING OWNER DECISION/.test(F.equity.pick(a).label)); }); YT.eq(F.rulesFor('football').source,'rulebook_s5'); F.registerRules('skate',{stub:false,custom:true}); YT.ok(F.rulesFor('skate').custom,'pluggable'); F.registerRules('skate',{stub:true,label:'PENDING OWNER DECISION'}); });
+/* representative frame for the screenshot (runs after tests) */
+var frameFn=function(){
+var m=new F.Meter(); [ 'line_to_gain','shell_read','positive_secure','bond_exchange','line_to_gain','line_to_gain','line_to_gain' ].forEach(function(e){m.add(e,Q4);});
+var g=Y.core.ctx; Y.core.beginRender(); g.fillStyle='#14161f'; g.fillRect(0,0,960,540); g.fillStyle='#ffd166'; g.font='bold 22px system-ui'; g.fillText('FaFiFi — '+F.LAW,30,44);
+g.fillStyle='#dde'; g.font='15px system-ui'; g.fillText('Football (rulebook §5): Perfect 30 meter '+m.value+'/30',30,90); g.fillStyle='#333'; g.fillRect(30,104,600,22); g.fillStyle='#ffd166'; g.fillRect(30,104,600*m.value/30,22);
+g.fillStyle='#dde'; Object.keys(F.POINTS).forEach(function(k,i){ g.fillText(k+': '+(F.POINTS[k]>0?'+':'')+F.POINTS[k],30,160+i*22); }); g.fillText('Equity Line choices: '+F.EQUITY.football.map(function(c){return c.label;}).join(' · '),30,350);
+g.fillStyle='#ff9f6b'; ['job','skate','arena'].forEach(function(a,i){ g.fillText(a+': '+F.rulesFor(a).label,30,400+i*24); }); Y.core.endRender();
+};
+}catch(e){ console.error("test page setup failed",e); YT.test("page setup",function(){throw e;}); }
+await YT.run();
+try{ if(typeof frameFn==="function")frameFn(); }catch(e){ console.error("frame render failed",e); }
+window.__frameDone=true;
+})();
+</script>
+</body></html>

@@ -1,0 +1,39 @@
+<!doctype html><html><head><meta charset="utf-8"><title>B02 input — YOUR · PROPOSAL_HOLD</title>
+<style>body{margin:0;background:#0b0c10;color:#ddd;font:13px system-ui}#stage{width:960px;height:540px;position:relative;background:#000}#results{padding:8px 12px;max-width:940px;line-height:1.5}.p{color:#7dffb0}.f{color:#ff5d73}</style>
+<script>window.__g0=Object.keys(window);</script></head>
+<body><div id="stage"><canvas id="c"></canvas></div><div id="results">running…</div>
+<script src="../modules/your_config.js"></script>
+<script src="../modules/your_core.js"></script>
+<script src="../modules/your_testkit.js"></script>
+<script src="../modules/your_input.js"></script>
+<script>
+(async function(){
+"use strict";
+var Y=window.YOUR;
+try{
+
+await YT.boot({assets:false});
+var vis={enter:function(){},update:function(){},render:function(g){ var I=Y.input; g.fillStyle='#16202c';g.fillRect(0,0,960,540); g.strokeStyle='#4ecdc4';g.lineWidth=3;g.beginPath();g.arc(240,270,110,0,7);g.stroke();
+  g.fillStyle='#ffd166';g.beginPath();g.arc(240+I.held('moveX')*100,270+I.held('moveY')*100,22,0,7);g.fill(); ['a','b','x','y','pause'].forEach(function(b,i){ g.fillStyle=I.held(b)?'#7dffb0':'#334'; g.beginPath(); g.arc(560+i*80,270,30,0,7); g.fill(); g.fillStyle='#fff'; g.font='bold 16px system-ui'; g.textAlign='center'; g.fillText(b.toUpperCase(),560+i*80,276); });
+  g.fillStyle='#ccd'; g.font='16px system-ui'; g.fillText('source: '+I.source+' · move ('+I.held('moveX').toFixed(2)+', '+I.held('moveY').toFixed(2)+')',480,420); }};
+Y.core.scene.register('vis',vis); Y.core.scene.go('vis');
+YT.test('hold J 1 s → pressed("a") on exactly one poll, held("a") on all polls',function(){ var pc=0,hc=0; YT.down('KeyJ'); for(var i=0;i<60;i++){ YT.step(1); if(Y.input.pressed('a'))pc++; if(Y.input.held('a'))hc++; } YT.up('KeyJ'); YT.step(1); YT.eq(pc,1,'pressed'); YT.eq(hc,60,'held'); YT.ok(Y.input.released('a'),'released edge'); });
+YT.test('diagonal keyboard move is normalized (length ≤ 1)',function(){ YT.down('KeyW'); YT.down('KeyD'); YT.step(1); var x=Y.input.held('moveX'),y=Y.input.held('moveY'); YT.near(Math.hypot(x,y),1,1e-9); YT.ok(x>0&&y<0,'direction'); YT.up('KeyW'); YT.up('KeyD'); YT.step(1); YT.eq(Y.input.held('moveX'),0); });
+YT.test('gamepad stick inside 0.2 deadzone returns 0,0; buttons map to actions',function(){ var pad={axes:[0.15,-0.1],buttons:[]}; Y.input.gamepadProvider=function(){return pad;}; YT.step(1); YT.eq([Y.input.held('moveX'),Y.input.held('moveY')],[0,0]);
+  pad={axes:[1,0],buttons:[{pressed:true},{pressed:false},{pressed:false},{pressed:true}]}; YT.step(1); YT.near(Y.input.held('moveX'),1,1e-9); YT.ok(Y.input.held('a')&&Y.input.held('y')&&!Y.input.held('b'),'buttons'); YT.eq(Y.input.source,'gamepad'); Y.input.gamepadProvider=function(){return null;}; YT.step(1); });
+YT.test('touch overlay hidden on desktop, visible after first touchstart; stick drives move',function(){ var ov=document.getElementById('your-touch'); YT.ok(!ov||ov.style.display==='none','hidden initially'); YT.ok(!Y.input.touchVisible);
+  window.dispatchEvent(new Event('touchstart')); ov=document.getElementById('your-touch'); YT.ok(ov&&ov.style.display==='block','visible'); var h=window.innerHeight,r=Math.min(window.innerWidth,h),sx=r*0.18,sy=h-r*0.2;
+  ov.dispatchEvent(new PointerEvent('pointerdown',{pointerId:7,pointerType:'touch',clientX:sx,clientY:sy})); ov.dispatchEvent(new PointerEvent('pointermove',{pointerId:7,pointerType:'touch',clientX:sx+r*0.12,clientY:sy})); YT.step(1);
+  YT.ok(Y.input.held('moveX')>0.9,'stick x '+Y.input.held('moveX')); });
+YT.test('no globals other than window.YOUR (plus test harness)',function(){ var allowed=['YOUR','YT','__g0','__results','__done']; var extra=Object.keys(window).filter(function(k){return window.__g0.indexOf(k)<0&&allowed.indexOf(k)<0;}); YT.eq(extra,[]); });
+/* representative frame for the screenshot (runs after tests) */
+var frameFn=function(){
+YT.down('KeyD'); YT.down('KeyJ'); YT.step(2);
+};
+}catch(e){ console.error("test page setup failed",e); YT.test("page setup",function(){throw e;}); }
+await YT.run();
+try{ if(typeof frameFn==="function")frameFn(); }catch(e){ console.error("frame render failed",e); }
+window.__frameDone=true;
+})();
+</script>
+</body></html>

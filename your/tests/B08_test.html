@@ -1,0 +1,45 @@
+<!doctype html><html><head><meta charset="utf-8"><title>B08 job_store — YOUR · PROPOSAL_HOLD</title>
+<style>body{margin:0;background:#0b0c10;color:#ddd;font:13px system-ui}#stage{width:960px;height:540px;position:relative;background:#000}#results{padding:8px 12px;max-width:940px;line-height:1.5}.p{color:#7dffb0}.f{color:#ff5d73}</style>
+<script>window.__g0=Object.keys(window);</script></head>
+<body><div id="stage"><canvas id="c"></canvas></div><div id="results">running…</div>
+<script src="../modules/your_config.js"></script>
+<script src="../modules/your_core.js"></script>
+<script src="../modules/your_testkit.js"></script>
+<script src="../modules/your_input.js"></script>
+<script src="../modules/your_character.js"></script>
+<script src="../modules/your_world.js"></script>
+<script src="../modules/your_profile.js"></script>
+<script src="../modules/your_hud.js"></script>
+<script src="../modules/your_day.js"></script>
+<script src="../modules/your_job.js"></script>
+<script>
+(async function(){
+"use strict";
+var Y=window.YOUR;
+try{
+
+await YT.boot();
+YT.freshProfile('Clerk'); Y.core.scene.register('world',Y.world.makeScene()); var J=Y.job;
+function goto(x,y){ J.player.x=x; J.player.y=y; }
+Y.core.scene.go('job');
+YT.test('exactly 5 crates at the Y.O.U.R. positions; each slot accepts one crate',function(){ YT.eq(J.crates.length,5); YT.eq(J.crates.map(function(c){return [c.x,c.y];}),[[260,200],[340,260],[200,280],[420,230],[300,150]]);
+  goto(260,200); YT.eq(J.act(),'pick'); goto(80,J.slots[0].y); YT.eq(J.act(),'drop'); YT.ok(J.slots[0].crate);
+  goto(340,260); YT.eq(J.act(),'pick'); goto(80,J.slots[0].y); YT.eq(J.act(),null,'full slot refuses'); goto(80,J.slots[1].y); YT.eq(J.act(),'drop'); YT.eq(J.count(),2); });
+YT.test('completion pays 45 once (+20 xp); re-entering same day shows "shift done"',function(){ var m=Y.profile.data.money; [[200,280],[420,230],[300,150]].forEach(function(c,i){ goto(c[0],c[1]); J.act(); goto(80,J.slots[2+i].y); J.act(); });
+  YT.eq(J.state,'done'); YT.eq(Y.profile.data.money,m+45); YT.ok(Y.profile.data.flags.job); YT.step(30); YT.eq(Y.profile.data.money,m+45,'once');
+  Y.core.scene.go('job'); YT.eq(J.state,'done'); YT.eq(J.crates.length,0); YT.ok(/Shift done/.test(J.msg)); YT.eq(Y.profile.data.money,m+45); });
+YT.test('timeout ends shift with partial pay 9 per crate (PROPOSED) and logs it',function(){ Y.day.sleep(); Y.core.scene.go('job'); YT.eq(J.state,'shift'); [[260,200],[340,260]].forEach(function(c,i){ goto(c[0],c[1]); J.act(); goto(80,J.slots[i].y); J.act(); });
+  var m=Y.profile.data.money; YT.secs(91); YT.eq(J.state,'timeout'); YT.eq(J.paid,18); YT.eq(Y.profile.data.money,m+18); YT.ok(Y.profile.data.log.some(function(e){return e.t==='job_timeout'&&e.amount===18;}),'logged'); });
+YT.test('pick-up uses Y.O.U.R. radius 44 (no pick from 60 px)',function(){ Y.day.sleep(); Y.core.scene.go('job'); goto(260+60,200); YT.eq(J.act(),null); goto(260+40,200); YT.eq(J.act(),'pick'); });
+YT.test('scene exits back to world at the store door',function(){ J.carry.placed=true; J.carry=null; goto(J.EXIT.x,J.EXIT.y); YT.tap('KeyJ'); YT.eq(Y.core.scene.name,'world'); var sp=Y.world.spawn('store'),pl=Y.core.scene.current.player; YT.ok(Math.hypot(pl.x-sp.x,pl.y-sp.y)<1,'at store door'); });
+/* representative frame for the screenshot (runs after tests) */
+var frameFn=function(){
+Y.day.sleep(); Y.core.scene.go('job'); goto(260,200); J.act(); goto(80,J.slots[0].y); J.act(); goto(330,250); J.act(); goto(300,200); YT.step(20);
+};
+}catch(e){ console.error("test page setup failed",e); YT.test("page setup",function(){throw e;}); }
+await YT.run();
+try{ if(typeof frameFn==="function")frameFn(); }catch(e){ console.error("frame render failed",e); }
+window.__frameDone=true;
+})();
+</script>
+</body></html>
