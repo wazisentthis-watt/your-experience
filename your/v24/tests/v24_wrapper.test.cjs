@@ -463,6 +463,117 @@ test('relay 004 item 4: the outcome is reported apart from intent and motor', ()
   assert.strictEqual(o.intent, S().activity, 'outcome intent does not match the brain activity');
 });
 
+/* ---- relay 007: canDrink flag, water loss, save/reload, debug line ---- */
+const BRAIN = require(path.join(here, 'wir_kaw_living_brain.js'));
+const BRAIN_ORIG = require(path.join(here, 'wir_kaw_living_brain.v0.1.orig.js'));
+
+test('relay 007 compat: with no canDrink flag, the module matches the v0.1 original step for step', () => {
+  const a = BRAIN_ORIG.makeState({ name: 'Veyru', bond: 40 }), b = BRAIN.makeState({ name: 'Veyru', bond: 40 });
+  const ctx = { position: { x: 5, y: 5 }, player: { x: 6, y: 5 }, mapId: 'CITY', hazard: 0, walk: () => true };
+  for (let i = 0; i < 3000; i++) {
+    BRAIN_ORIG.tick(a, ctx, 0.1); BRAIN.tick(b, ctx, 0.1);
+    assert.deepStrictEqual(b.needs, a.needs, 'diverged at step ' + i);
+    assert.strictEqual(b.activity, a.activity, 'activity diverged at step ' + i);
+  }
+});
+
+test('relay 007 flag: canDrink true lowers thirst on drink; canDrink false lets natural thirst rise', () => {
+  const on = BRAIN.makeState({ name: 'Veyru', bond: 40 }), off = BRAIN.makeState({ name: 'Veyru', bond: 40 });
+  on.activity = 'drink'; off.activity = 'drink'; on.needs.thirst = off.needs.thirst = 50;
+  const ctx = { position: { x: 5, y: 5 }, player: { x: 6, y: 5 }, mapId: 'CITY', walk: () => true };
+  BRAIN.tick(on, Object.assign({ canDrink: true }, ctx), 0.1);
+  BRAIN.tick(off, Object.assign({ canDrink: false }, ctx), 0.1);
+  assert.ok(on.needs.thirst < 50, 'canDrink true did not lower thirst');
+  assert.ok(off.needs.thirst > 50 && Math.abs(off.needs.thirst - 50.02) < 1e-6, 'canDrink false did not give natural rise only');
+});
+
+test('relay 007: water drained mid-drink. Thirst stops falling at once and only rises after', () => {
+  const m = waterMap();
+  const { V22, kaw, hero, env, S } = fresh('hero-a', m);
+  S().accompanied = true; S().bond = 90;
+  hero.px = 8.5; hero.py = 4.5; V22.brainMap('CITY', env('CITY')); kaw.x = 7.5; kaw.y = 4.5;
+  let drinking = 0, lastSat = -1;
+  for (let i = 0; i < 60 * 60; i++) {                     // phase 1: water is there, Veyru drinks
+    S().needs.thirst = Math.max(S().needs.thirst || 0, 60);
+    V22.brainStep(1 / 60, env('CITY'));
+    if (S().outcome && S().outcome.need === 'thirst' && S().outcome.satisfied) drinking++;
+    if (drinking >= 60) break;
+  }
+  assert.ok(drinking >= 60, 'Veyru never drank at the shore');
+  for (let y = 0; y < m.h; y++) { m.t[y * m.w + 10] = 0; m.t[y * m.w + 11] = 0; }   // the water is gone
+  for (let i = 0; i < 60 * 30; i++) {                     // phase 2: no water
+    const before = S().needs.thirst;
+    V22.brainStep(1 / 60, env('CITY'));
+    const o = S().outcome;
+    assert.ok(!(o && o.need === 'thirst' && o.satisfied), 'counted as drinking with no water at frame ' + i);
+    if (o && o.need === 'thirst') assert.ok(S().needs.thirst >= before - 1e-9, 'thirst fell with no water at frame ' + i);
+    if (S().needs.thirst < before - 1e-9) assert.fail('thirst fell at frame ' + i);
+  }
+  assert.ok(S().needs.thirst > 60, 'thirst did not rise after water was lost');
+});
+
+test('relay 007: no water on the map at all. Thirst never falls, however long Veyru tries to drink', () => {
+  const m = { id: 'CITY', w: 14, h: 10, t: new Uint8Array(140), block: new Uint8Array(140), objs: [] };
+  const { V22, kaw, hero, env, S } = fresh('hero-a', m);
+  S().accompanied = true; S().bond = 90; hero.px = 7.5; hero.py = 5.5;
+  V22.brainMap('CITY', env('CITY')); kaw.x = 6.5; kaw.y = 5.5;
+  for (let i = 0; i < 60 * 120; i++) {
+    const before = S().needs.thirst;
+    V22.brainStep(1 / 60, env('CITY'));
+    if (S().needs.thirst < before - 1e-9) assert.fail('thirst fell with no water at frame ' + i);
+    assert.ok(!(S().outcome && S().outcome.satisfied && S().outcome.need === 'thirst'), 'drink counted without water');
+  }
+});
+
+test('relay 007: save/reload during navigation resumes and still reaches water', () => {
+  store.clear();
+  const m = waterMap();
+  const a = boot('hero-a'); a.YOUR_V24.ready();
+  const wa = world(a, m); wa.S().accompanied = true; wa.S().bond = 90;
+  wa.hero.px = 8.5; wa.hero.py = 4.5; wa.V22.brainMap('CITY', wa.env('CITY')); wa.kaw.x = 7.5; wa.kaw.y = 4.5;
+  let mid = false;
+  for (let i = 0; i < 60 * 20 && !mid; i++) {
+    wa.S().needs.thirst = 60; wa.V22.brainStep(1 / 60, wa.env('CITY'));
+    if (wa.S().motor === 'route' && wa.S().route && wa.S().route.length) mid = true;
+  }
+  assert.ok(mid, 'never mid-route');
+  wa.W.save();
+  const b = boot('hero-a'); b.YOUR_V24.ready();
+  const wb = world(b, m); wb.hero.px = 8.5; wb.hero.py = 4.5;
+  assert.strictEqual(b.YOUR_V24.state().needs.thirst >= 0, true);
+  let reached = false;
+  for (let i = 0; i < 60 * 180 && !reached; i++) {
+    b.YOUR_V24.state().needs.thirst = Math.max(b.YOUR_V24.state().needs.thirst, 40);
+    wb.V22.brainStep(1 / 60, wb.env('CITY'));
+    assert.ok(mapWalk(m, wb.kaw.x, wb.kaw.y), 'stood on a blocked tile after reload');
+    if (b.YOUR_V24.state().outcome && b.YOUR_V24.state().outcome.satisfied) reached = true;
+  }
+  assert.ok(reached, 'did not reach water after reload');
+});
+
+test('relay 007: thirst after drinking survives save and reload (no reset, no free refill)', () => {
+  store.clear();
+  const m = waterMap();
+  const a = boot('hero-a'); a.YOUR_V24.ready();
+  const wa = world(a, m); wa.S().accompanied = true; wa.S().bond = 90;
+  wa.hero.px = 8.5; wa.hero.py = 4.5; wa.V22.brainMap('CITY', wa.env('CITY')); wa.kaw.x = 9.5; wa.kaw.y = 4.5;
+  for (let i = 0; i < 60 * 5; i++) { wa.S().needs.thirst = Math.max(wa.S().needs.thirst, 60); wa.V22.brainStep(1 / 60, wa.env('CITY')); }
+  const t1 = wa.S().needs.thirst;
+  assert.ok(t1 < 60, 'drinking did not lower thirst before save');
+  wa.W.save();
+  const b = boot('hero-a'); b.YOUR_V24.ready();
+  assert.ok(Math.abs(b.YOUR_V24.state().needs.thirst - t1) < 1e-9, 'thirst changed across reload');
+});
+
+test('relay 007: debug line shows intention, need and outcome', () => {
+  const m = homeMap();
+  const { V22, kaw, env, S, W } = fresh('hero-a', m);
+  V22.brainMap('HOME', env('HOME')); kaw.x = 7.5; kaw.y = 6.5;
+  S().needs.hunger = 60; V22.brainStep(1 / 60, env('HOME'));
+  const line = W.debugLine();
+  assert.ok(line.includes('intent ') && line.includes('activity ') && line.includes('hunger ') && line.includes('outcome '), 'debug line missing fields: ' + line);
+});
+
 const failed = results.filter(r => r[0] === 'FAIL');
 for (const r of results) console.log(r[0] === 'ok' ? 'ok   ' + r[1] : 'FAIL ' + r[1] + ' :: ' + r[2]);
 console.log(`\n${results.length - failed.length} passed, ${failed.length} failed`);
