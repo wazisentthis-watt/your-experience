@@ -32,10 +32,14 @@
     var P = V22.P = { energy: MC.energy.max, stamina: MC.stamina.max, transformed: false, act: null, actT: 0, actDur: 0, jz: 0, jvz: 0, dashT: 0, dashDir: null,
       stab: 100, chain: [], cells: [], shots: [], reaction: 0, guardian: 0, uses: {} };
     var kaw = V22.kaw = { x: 0, y: 0, dir: 'right', face: 'right', ph: 0, moving: false, trail: [] };
+    /* v2.4 hook: the KAW Living Brain reads the hero and the map through this (your_v24.js). */
+    function brainEnv() { return { px: G.px, py: G.py, kaw: kaw, map: G.map, walk: function (x, y) { return !!G.map && F.walkable()(G.map, x, y); } }; }
+    V22.brainEnv = brainEnv;
     function Ys() { return V.state(); }
     function kawState() { var y = Ys(); if (!y) return null; if (!y.kaw || y.kaw.id !== KC.id) { var pk = null; try { pk = H.get().kaw; } catch (e) {} y.kaw = { id: KC.id, bond: pk && pk.id === KC.id && pk.bond != null ? pk.bond : KC.bondStart, calms: 0, since: (pk && pk.since) || new Date().toISOString() }; } return y.kaw; }
     function kawProfile() { var k = kawState(); if (!k) return; try { H.update({ kaw: { id: KC.id, name: KC.name, species: KC.species, elements: KC.elements, bond: Math.round(k.bond), since: k.since } }); H.unlock('your:kaw_veyru'); } catch (e) { console.warn('kaw profile', e); } }
     V22.kawProfile = kawProfile;
+    V22.kawState = kawState;
     var saveT = 0; function bondUp(n, why) { var k = kawState(); if (!k) return; var b0 = k.bond; k.bond = Math.max(0, Math.min(100, k.bond + n)); if (k.bond >= MC.calm.bondDone && b0 < MC.calm.bondDone) { try { H.unlock('your:kaw_bonded'); } catch (e) {} toast('Veyru trusts you completely (bond ' + Math.round(k.bond) + ').', 'gold'); }
       V22.log.push({ bond: n, why: why }); clearTimeout(saveT); saveT = setTimeout(kawProfile, 300); }
     V22.bondUp = bondUp;
@@ -126,7 +130,7 @@
     });
     // dash on the sprint press (V7 dash = Shift; v2.0 sprint = hold Shift/K, so a press dashes and holding keeps sprinting)
     /* ------------------------------------------------ 3. Veyru follows */
-    function stepKaw(dt) { var tr = kaw.trail, last = tr[tr.length - 1];
+    function stepKaw(dt) { if (V22.brainStep) { V22.brainStep(dt, brainEnv()); return; } var tr = kaw.trail, last = tr[tr.length - 1];
       if (!last || Math.hypot(last[0] - G.px, last[1] - G.py) > .08) { tr.push([G.px, G.py]); if (tr.length > 80) tr.shift(); }
       var gap = KC.follow.gap, tgt = null, acc = 0;
       for (var i = tr.length - 1; i > 0; i--) { acc += Math.hypot(tr[i][0] - tr[i - 1][0], tr[i][1] - tr[i - 1][1]); if (acc >= gap) { tgt = tr[i - 1]; break; } }
@@ -136,14 +140,14 @@
       var sp = Math.max(3.2, F.speedNow()() * 1.8) * dt; if (d0 > gap * 1.8) sp *= 1.6;
       var k = Math.min(1, sp / d); kaw.x += dx * k; kaw.y += dy * k; kaw.moving = true; kaw.ph += dt * 11; kaw.dir = F.dirOf()(dx, dy);
       if (Math.abs(dx) > .01 && (kaw.dir === 'left' || kaw.dir === 'right')) kaw.face = kaw.dir; else if (Math.abs(dx) > Math.abs(dy) * .35) kaw.face = dx < 0 ? 'left' : 'right'; }
-    function placeKaw() { var opts = [[-1, 0], [1, 0], [0, 1], [0, -1], [-1, 1], [1, 1]]; kaw.x = 0;
+    function placeKaw() { if (V22.brainPlace) { V22.brainPlace(brainEnv()); return; } var opts = [[-1, 0], [1, 0], [0, 1], [0, -1], [-1, 1], [1, 1]]; kaw.x = 0;
       for (var i = 0; i < opts.length; i++) { var x = Math.floor(G.px) + opts[i][0], y = Math.floor(G.py) + opts[i][1]; if (G.map && F.walkable()(G.map, x, y)) { kaw.x = x + .5; kaw.y = y + .5; break; } }
       if (!kaw.x) { kaw.x = G.px - .6; kaw.y = G.py; } kaw.trail = [[kaw.x, kaw.y], [G.px, G.py]]; kaw.dir = 'right'; kaw.face = kaw.x > G.px ? 'left' : 'right'; }
     V22.placeKaw = placeKaw;
-    var _em = F.enterMap(); X.set('enterMap', function (id, at) { var r = _em(id, at); placeKaw(); P.cells = []; P.shots = []; return r; });
+    var _em = F.enterMap(); X.set('enterMap', function (id, at) { var r = _em(id, at); if (V22.brainMap) V22.brainMap(id, brainEnv()); else placeKaw(); P.cells = []; P.shots = []; return r; });
 
     /* ------------------------------------------------ drawing */
-    function drawKaw() { var cx = X.cx, idle = img(KC.art.idle), size = KC.size; if (!idle) return; var vertical = kaw.moving && (kaw.dir === 'up' || kaw.dir === 'down');
+    function drawKaw() { var cx = X.cx, idle = img(KC.art.idle), size = KC.size; if (!idle || kaw.off) return; var vertical = kaw.moving && (kaw.dir === 'up' || kaw.dir === 'down');
       var im = kaw.moving ? (img(KC.art.walkR[Math.floor(kaw.ph * .6) % 4]) || idle) : idle, bob = kaw.moving ? 0 : Math.sin(performance.now() / 420) * .8;
       var X0 = kaw.x * T, Y0 = kaw.y * T + 8;
       cx.save(); cx.translate(X0, Y0); cx.fillStyle = 'rgba(0,0,0,.28)'; cx.beginPath(); cx.ellipse(0, 0, 14, 5, 0, 0, 7); cx.fill();
