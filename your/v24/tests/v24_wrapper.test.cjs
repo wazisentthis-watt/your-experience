@@ -269,7 +269,8 @@ test('fix 4 (relay 003): hero changes mid-session. Brain resets, saves are keyed
   assert.strictEqual(w.S().accompanied, false, 'brain state carried over to hero-b');
   w.W.save();
   const raw = JSON.parse(store.get('wir-kaw-brain-v24'));
-  assert.strictEqual(raw.hero, 'hero-b');
+  assert.ok(raw.heroes['hero-b'], 'no record for hero-b');
+  assert.strictEqual(raw.heroes['hero-b'].state.accompanied, false, 'hero-b record carries hero-a state');
 });
 
 test('fix 4: save/reload restores brain state for the same hero and KAW', () => {
@@ -278,7 +279,7 @@ test('fix 4: save/reload restores brain state for the same hero and KAW', () => 
   const b = boot('hero-a');
   assert.strictEqual(b.YOUR_V24.state().accompanied, false, 'state read before the hero bound');
   b.YOUR_V24.save();
-  assert.strictEqual(JSON.parse(store.get('wir-kaw-brain-v24')).hero, 'hero-a');
+  assert.ok(JSON.parse(store.get('wir-kaw-brain-v24')).heroes['hero-a'], 'no record keyed to hero-a');
 });
 
 test('fix 4: a different hero resets only the brain, not the hero profile', () => {
@@ -321,6 +322,145 @@ test('bond stays a mirror of the hero profile, not a second copy', () => {
   sb.__bond = 77;
   V22.brainStep(1 / 60, env('HOME'));
   assert.strictEqual(S().bond, 77);
+});
+
+/* ---- relay 004 coverage ---- */
+function homeMap() {
+  const w = 14, h = 10, t = new Uint8Array(w * h), block = new Uint8Array(w * h);
+  block[2 * w + 2] = 1;                          // fridge cell
+  block[6 * w + 10] = 1; block[6 * w + 11] = 1;  // bed cells
+  return { id: 'HOME', w, h, t, block, objs: [{ id: 'fridge', x: 2, y: 2, w: 1, h: 1 }, { id: 'bed', x: 10, y: 6, w: 2, h: 1 }] };
+}
+function waterMap() {
+  const w = 14, h = 10, t = new Uint8Array(w * h), block = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) { t[y * w + 10] = 8; t[y * w + 11] = 8; }   // a water channel
+  return { id: 'CITY', w, h, t, block, objs: [] };
+}
+
+test('relay 004 item 1: hunger falls only once Veyru is at the food spot (fridge)', () => {
+  const m = homeMap();
+  const { V22, kaw, hero, env, S } = fresh('hero-a', m);
+  V22.brainMap('HOME', env('HOME'));
+  kaw.x = 7.5; kaw.y = 6.5; hero.px = 7.5; hero.py = 6.5;
+  let reached = false;
+  for (let i = 0; i < 60 * 180 && !reached; i++) {
+    S().needs.hunger = 60;                       // hold the need so any change is visible this step
+    V22.brainStep(1 / 60, env('HOME'));
+    const o = S().outcome;
+    if (o && o.need === 'hunger') {
+      if (o.satisfied) { reached = true; assert.ok(S().needs.hunger < 60, 'at the fridge but hunger did not fall'); }
+      else assert.ok(S().needs.hunger >= 60 - 1e-9, 'hunger fell before Veyru reached food');
+    }
+  }
+  assert.ok(reached, 'never reached the food spot');
+});
+
+test('relay 004 item 1: thirst falls only once Veyru is at the water shore', () => {
+  const m = waterMap();
+  const { V22, kaw, hero, env, S } = fresh('hero-a', m);
+  S().accompanied = true; S().bond = 90;
+  hero.px = 8.5; hero.py = 4.5;
+  V22.brainMap('CITY', env('CITY'));
+  kaw.x = 7.5; kaw.y = 4.5;
+  let reached = false;
+  for (let i = 0; i < 60 * 180 && !reached; i++) {
+    S().needs.thirst = 60;
+    V22.brainStep(1 / 60, env('CITY'));
+    const o = S().outcome;
+    if (o && o.need === 'thirst') {
+      if (o.satisfied) { reached = true; assert.ok(S().needs.thirst < 60, 'at the shore but thirst did not fall'); }
+      else assert.ok(S().needs.thirst >= 60 - 1e-9, 'thirst fell away from water');
+    }
+  }
+  assert.ok(reached, 'never reached the water shore');
+});
+
+test('relay 004 item 3: the route goes around a wall through its gap and never enters a blocked tile', () => {
+  const w = 20, h = 12, t = new Uint8Array(w * h), block = new Uint8Array(w * h);
+  for (let x = 0; x < 16; x++) block[5 * w + x] = 1;   // wall on row 5, gap at x=16..19
+  const m = { id: 'CITY', w, h, t, block, objs: [] };
+  const { W, env } = fresh('hero-a', m);
+  const e = env('CITY');
+  const route = W.findRoute(e, { x: 4.5, y: 2.5 }, { x: 4.5, y: 8.5 });
+  assert.ok(route && route.length > 6, 'no detour found around the wall');
+  let cur = { x: 4.5, y: 2.5 };
+  for (const p of route) {
+    assert.ok(mapWalk(m, p.x, p.y), 'route enters a blocked tile at ' + p.x + ',' + p.y);
+    assert.ok(Math.abs(p.x - cur.x) + Math.abs(p.y - cur.y) <= 1.01, 'route step is not adjacent');
+    cur = p;
+  }
+  assert.deepStrictEqual([cur.x, cur.y], [4.5, 8.5], 'route did not end at the goal');
+  assert.ok(route.some(p => p.x >= 16 && p.y === 5.5), 'route did not pass through the gap');
+});
+
+test('relay 004 item 2: Veyru rests on the HOME bed when it can reach it, and says so', () => {
+  const m = homeMap();
+  const { V22, kaw, env, S } = fresh('hero-a', m);
+  V22.brainMap('HOME', env('HOME'));
+  kaw.x = 3.5; kaw.y = 6.5;
+  let onBed = false;
+  for (let i = 0; i < 60 * 300 && !onBed; i++) {
+    S().needs.restNeed = 60;
+    V22.brainStep(1 / 60, env('HOME'));
+    const o = S().outcome;
+    if (o && o.need === 'restNeed' && o.satisfied) { onBed = true; assert.strictEqual(o.place, 'bed'); }
+  }
+  assert.ok(onBed, 'never rested at the bed');
+});
+
+test('relay 004 item 2: with no bed on the map, rest happens in place and is reported as in place', () => {
+  const m = { id: 'CITY', w: 14, h: 10, t: new Uint8Array(140), block: new Uint8Array(140), objs: [] };
+  const { V22, kaw, hero, env, S } = fresh('hero-a', m);
+  S().accompanied = true; S().bond = 90;
+  hero.px = 7.5; hero.py = 5.5;
+  V22.brainMap('CITY', env('CITY'));
+  kaw.x = 6.5; kaw.y = 5.5;
+  let inPlace = false;
+  for (let i = 0; i < 60 * 120 && !inPlace; i++) {
+    S().needs.restNeed = 60;
+    V22.brainStep(1 / 60, env('CITY'));
+    const o = S().outcome;
+    if (o && o.need === 'restNeed') { assert.strictEqual(o.satisfied, false); if (o.place === 'in place') inPlace = true; }
+  }
+  assert.ok(inPlace, 'rest in place never reported');
+});
+
+test('relay 004 item 5 (logic): Veyru never stands on a blocked tile across a long mixed-need run', () => {
+  const m = homeMap();
+  const { V22, kaw, hero, env, S } = fresh('hero-a', m);
+  V22.brainMap('HOME', env('HOME'));
+  kaw.x = 5.5; kaw.y = 4.5; hero.px = 5.5; hero.py = 4.5;
+  for (let i = 0; i < 60 * 240; i++) {
+    if (i % 900 === 0) { const s = S().needs; s.hunger = (i / 900) % 3 === 0 ? 70 : 20; s.thirst = (i / 900) % 2 === 0 ? 65 : 20; s.restNeed = (i / 900) % 4 === 0 ? 70 : 15; }
+    V22.brainStep(1 / 60, env('HOME'));
+    assert.ok(mapWalk(m, kaw.x, kaw.y), 'stood on a blocked tile at frame ' + i + ' (' + kaw.x + ',' + kaw.y + ')');
+  }
+});
+
+test('relay 004 item 6: identity switching keeps each hero\'s own brain, and reload restores it', () => {
+  store.clear();
+  const sb = boot('hero-a'); sb.YOUR_V24.ready();
+  sb.YOUR_V24.state().needs.hunger = 88; sb.YOUR_V24.save();
+  sb.__hero = 'hero-b'; sb.YOUR_V24.ready();
+  assert.strictEqual(sb.YOUR_V24.hero(), 'hero-b');
+  assert.notStrictEqual(sb.YOUR_V24.state().needs.hunger, 88, 'hero-b inherited hero-a brain');
+  sb.YOUR_V24.state().needs.hunger = 12; sb.YOUR_V24.save();
+  sb.__hero = 'hero-a'; sb.YOUR_V24.ready();
+  assert.strictEqual(sb.YOUR_V24.state().needs.hunger, 88, 'hero-a brain was not restored on switch back');
+  const reloaded = boot('hero-a'); reloaded.YOUR_V24.ready();
+  assert.strictEqual(reloaded.YOUR_V24.state().needs.hunger, 88, 'hero-a brain was not restored after reload');
+});
+
+test('relay 004 item 4: the outcome is reported apart from intent and motor', () => {
+  const m = homeMap();
+  const { V22, kaw, env, S, W } = fresh('hero-a', m);
+  V22.brainMap('HOME', env('HOME'));
+  kaw.x = 7.5; kaw.y = 6.5;
+  S().needs.hunger = 60;
+  V22.brainStep(1 / 60, env('HOME'));
+  const o = W.outcome();
+  assert.ok(o && 'intent' in o && 'motor' in o && 'satisfied' in o, 'outcome record missing fields');
+  assert.strictEqual(o.intent, S().activity, 'outcome intent does not match the brain activity');
 });
 
 const failed = results.filter(r => r[0] === 'FAIL');

@@ -20,7 +20,7 @@
   var V22 = window.YOUR_V22, B = window.WIRKAWLivingBrain;
   if (!V22 || !B) return;
 
-  var KEY = 'wir-kaw-brain-v24', SAVE_V = 3, HOME = 'HOME', WATER = 8;
+  var KEY = 'wir-kaw-brain-v24', SAVE_V = 4, HOME = 'HOME', WATER = 8;
   var KC = (window.YOUR_V22_CONFIG && window.YOUR_V22_CONFIG.kaw) || { id: 'kaw-veyru-001' };
   var CFG = {
     speed: 2.6, sprint: 3.6, gap: 1.25, social: 2.5,   // tiles/s; stop distances (PROPOSED)
@@ -40,12 +40,23 @@
     try { var h = window.WIR_HERO && window.WIR_HERO.get(); var id = h && h.id; return (typeof id === 'string' && /^[\w-]{3,40}$/.test(id)) ? id : null; }
     catch (e) { return null; }
   }
-  function loadStore(id) {
+  // One store, one record per hero (relay 004 item 6): switching heroes keeps each hero's own brain.
+  function readAll() {
     try {
       var raw = JSON.parse(localStorage.getItem(KEY) || 'null');
-      if (!raw || raw.v !== SAVE_V || raw.hero !== id || raw.kaw !== KC.id) return null;
-      return B.hydrate(raw.state);
-    } catch (e) { return null; }
+      if (!raw || raw.v !== SAVE_V || raw.kaw !== KC.id || !raw.heroes || typeof raw.heroes !== 'object') return {};
+      return raw.heroes;
+    } catch (e) { return {}; }
+  }
+  function loadStore(id) {
+    try { var rec = readAll()[id]; return rec && rec.state ? B.hydrate(rec.state) : null; }
+    catch (e) { return null; }
+  }
+  function persist(id, s) {
+    try {
+      var all = readAll(); all[id] = { state: s, at: s.clock };
+      localStorage.setItem(KEY, JSON.stringify({ v: SAVE_V, kaw: KC.id, heroes: all }));
+    } catch (e) {}
   }
   var state = freshState(), boundHero = null, lastSave = 0, lastMap = null, kawRef = null;
   // Returns the bound hero id, or null while the profile is not ready. A change of hero resets the brain only.
@@ -53,16 +64,14 @@
     var id = readHero();
     if (!id) return null;
     if (id !== boundHero) {
+      if (boundHero) persist(boundHero, state);                 // keep the outgoing hero's brain
       state = loadStore(id) || freshState();
       state.cooldownUntil = state.cooldownUntil || 0;
       boundHero = id; lastSave = 0; lastMap = null;
     }
     return id;
   }
-  function save() {
-    var id = bindHero(); if (!id) return;
-    try { localStorage.setItem(KEY, JSON.stringify({ v: SAVE_V, hero: id, kaw: KC.id, state: state })); } catch (e) {}
-  }
+  function save() { var id = bindHero(); if (id) persist(id, state); }
 
   function bondNow() { try { var k = V22.kawState && V22.kawState(); if (k && typeof k.bond === 'number') return k.bond; } catch (e) {} return state.bond; }
   function syncBond() { var b = bondNow(); if (b !== state.bond) state.bond = Math.max(0, Math.min(100, b)); }
@@ -294,14 +303,28 @@
     var mid = env.map && env.map.id;
     if (mid !== lastMap) transitionPlace(env, mid);
     applyOffMap(env);
+    var step = Math.min(dt, 0.25), ctx = ctxFrom(env);
     var thBefore = state.needs ? state.needs.thirst : null;
-    B.tick(state, ctxFrom(env), Math.min(dt, 0.25));
-    // The module lowers thirst whenever activity is 'drink', even far from water. Drink only counts at the water spot.
-    if (thBefore != null && state.activity === 'drink' && !nearAffordance(env, 'water', 1.2)) state.needs.thirst = Math.max(state.needs.thirst, thBefore);
+    B.tick(state, ctx, step);
+    // The module lowers thirst whenever activity is 'drink', even far from water. Drink counts only at the water spot.
+    // Away from water, thirst takes only its natural rise for this step (module rate 0.20/s), so it is not cancelled.
+    if (thBefore != null && state.activity === 'drink' && !nearAffordance(env, 'water', 1.2)) {
+      state.needs.thirst = Math.max(0, Math.min(100, thBefore + step * 0.20));
+    }
+    recordOutcome(env, ctx);
     if (env.kaw.off) { env.kaw.moving = false; maybeSave(); return; }
     chooseTarget(env, dt);
     moveAlong(env, dt);
     maybeSave();
+  }
+  // Outcome (relay 004 item 4): what the intent achieved this step. Kept apart from intent (activity) and motor.
+  // satisfied: true only when the need was actually met at the resource; false while still pending; null when no need applies.
+  function recordOutcome(env, ctx) {
+    var act = state.activity, need = null, satisfied = null, place = null;
+    if (act === 'drink') { need = 'thirst'; satisfied = nearAffordance(env, 'water', 1.2); }
+    else if (act === 'forage') { need = 'hunger'; satisfied = !!ctx.hasFood; }
+    else if (act === 'rest') { need = 'restNeed'; place = nearAffordance(env, 'rest', 1.2) ? 'bed' : 'in place'; satisfied = place === 'bed'; }
+    state.outcome = { intent: act, motor: state.motor || null, need: need, satisfied: satisfied, place: place, at: state.clock };
   }
   function maybeSave() { if (state.clock - lastSave >= CFG.saveEvery) { lastSave = state.clock; save(); } }
 
@@ -373,6 +396,16 @@
     return b;
   }
   var TOUCH = [['VEYRU', 'Call Veyru', call], ['STAY', 'Stay or at ease', stayToggle]];
+  // Relay 004 item 5: the touch overlay's X, Y, A, B buttons sit in the bottom band of the screen (r = min(w,h)).
+  // While the overlay is shown, lift the whole #yourMoves column above that band. Desktop (no overlay) is unchanged.
+  // The rule is injected here, in v24, so the v2.0 source is not edited.
+  (function touchClearance() {
+    try {
+      var st = document.createElement('style'); st.id = 'kaw-v24-touch-clear';
+      st.textContent = 'body:has(#your-touch[style*="display: block"]) #yourMoves{bottom:calc(min(100vw,100vh) * .3 + 10px) !important}';
+      (document.head || document.documentElement).appendChild(st);
+    } catch (e) { /* no document head (e.g. a test stub): nothing to style */ }
+  })();
   function mountTouch(tries) {
     if (document.getElementById('kaw-touch-veyru')) return;
     var moves = document.getElementById('yourMoves');
@@ -399,7 +432,8 @@
   V22.brainPlace = brainPlace;
   V22.brainMap = brainMap;
   window.YOUR_V24 = {
-    state: function () { return state; }, hero: function () { return boundHero; }, ready: bindHero, CFG: CFG,
+    state: function () { return state; }, outcome: function () { return state.outcome || null; },
+    hero: function () { return boundHero; }, ready: bindHero, CFG: CFG,
     call: call, stayToggle: stayToggle, save: save, affordances: affordances, findRoute: findRoute, kaw: KC.id
   };
 })();
