@@ -11,6 +11,7 @@ The build is layered. Each layer wraps the previous one without rewriting it:
 3. **v2.0 merge layer** (`your/v20/`): `your_v20.js` hooks into the end of the Valence IIFE (`window.YOUR_V20_INSTALL`) and adds the hero, Y.O.U.R. activities, payroll and the LLM shim.
 4. **v2.1** (`your/v21/`): the hero on the Elemental Gridiron field (`eg_hero.js`, loaded in `football.html`) and football progress in the shared profile (`hero_football.js`).
 5. **v2.2** (`your/v22/`): the hero IS the MELLA (First Wish V7 power kit), the Mella follower is off, and Veyru the KAW follows you with a bond meter.
+6. **v2.3** (`your/v23/`): **Y.O.U.R. Experience — Experience Wonders**. Villain combat in the city (METAL ghosted machines with their real sprites in `your/assets/villains/metal_machines/`, plus the bosses BALLAST and GLASSJAW with placeholder art), wave raids, hero HP and knock-down, and Veyru assists. All damage goes through the recovered Nimbus module `your/v23/vendor/wir_mella_combat.js` (`window.WIRMellaCombat.executeMellaCombatFrame`). Keep that vendored file byte-identical; wrap it instead of editing it.
 
 The patches that inserted these script tags are recorded in `tools/build_v20.py`, `build_v21.py` and `build_v22.py`. Those scripts need original source files that are not in this repo, so edit `index.html` and `football.html` directly and describe the edit in your PR.
 
@@ -18,13 +19,14 @@ The patches that inserted these script tags are recorded in `tools/build_v20.py`
 
 | File | What it holds |
 |---|---|
+| `your/v23/your_v23_config.js` | `window.YOUR_V23_CONFIG`: brand text, machine and boss stats (tagged METAL), raid waves, Nimbus lane damage, hero HP, Veyru assists |
 | `your/v22/your_v22_config.js` | `window.YOUR_V22_CONFIG`: MELLA powers (V7 values), key bindings, Veyru follow and bond rules, scales |
 | `your/v21/your_v21_config.js` | `window.YOUR_V21_CONFIG`: football hero (positions, XP per level, standalone hero) |
 | `your/v20/your_v20_config.js` | `window.YOUR_V20_CONFIG`: activity payouts, Mella follower (now off), dialogue |
 | `your/modules/your_config.js` + `_v1` + `_v11` | v1.2.1 engine config and asset manifest |
 | `your/assets/chatgpt/manifest.js` | ChatGPT-drawn art slots |
 
-Values are tagged in comments: **V7** (copied from The First Wish · Mella V7), **V121** (from v1.2.1), and **PROPOSED** (not owner-approved yet). Keep that tagging.
+Values are tagged in comments: **V7** (copied from The First Wish · Mella V7), **METAL** (from METAL: IN DA RIFFT), **NIMBUS** (from wir_mella_combat.js), **V121** (from v1.2.1), and **PROPOSED** (not owner-approved yet). Keep that tagging.
 
 ## Shared hero profile: `wir.hero/1`
 
@@ -46,6 +48,8 @@ Values are tagged in comments: **V7** (copied from The First Wish · Mella V7), 
 
 API: `get() · save(p) · update(patch) · setName(s) · unlock(id) · has(id) · gameData(gameId[, data]) · syncLevel(level, xp) · export() · import(json) · reset() · onChange(fn) · validate(obj)`.
 
+v2.3 writes its combat record to `games.your_combat` (raids started/cleared/failed, bosses stopped, isolates by kind, reward day) and adds unlocks such as `your:raid_survived`, `your:villain_ballast`, `your:villain_glassjaw` and `your:site_isolated`.
+
 Rules: add new fields as **optional**, so older readers can ignore them. Put game-specific data under `games.<yourGameId>.data`. Never delete fields you don't understand.
 
 A richer event-history save, the **Mella Passport**, has been designed and tested separately. It isn't wired in yet; don't build a competing save format.
@@ -60,7 +64,10 @@ A richer event-history save, the **Mella Passport**, has been designed and teste
 
 ## Open work (good first PRs)
 
-- Villains with health bars, wave raids and targets for Hit and Blast (v2.3 is in progress with the owner's main developer, so coordinate in a PR first).
+- Real sprites for BALLAST and GLASSJAW. No recovered art exists, so they use labelled placeholders. Art must be original WIR art.
+- GLASSJAW's phase-2 fake platforms aren't built yet.
+- Raids exist in one district only (the starter flat block).
+- The Nimbus Divine-12 nodes use the module's defaults.
 - A real 4-direction Veyru walk sheet. Today the right-facing frames are mirrored for left.
 - Nimbus lanes are labels only.
 - 9 football stand-in poses.

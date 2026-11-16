@@ -2,9 +2,9 @@
 
 **▶ Play in your browser:** https://wazisentthis-watt.github.io/your-experience/
 
-Y.O.U.R. is the playable doorway into **What Is Reality? (WIR)**. You play as yourself, a superpowered hero who is the **MELLA** with the First Wish powers. **Veyru**, a KAW (Rainroot Lynx), follows you as your sidekick. You live a day in the WIR city (Valence Life), take jobs, skate, fight in the arena, and play **Elemental Gridiron** football. Your progress is saved to one shared hero profile that other WIR games can read.
+Y.O.U.R. is the playable doorway into **What Is Reality? (WIR)**. You play as yourself, a superpowered hero who is the **MELLA** with the First Wish powers. **Veyru**, a KAW (Rainroot Lynx), follows you and fights beside you. You live a day in the WIR city (Valence Life), fight villains, survive raids, take jobs, skate, fight in the arena, and play **Elemental Gridiron** football. Your progress is saved to one shared hero profile that other WIR games can read.
 
-This repository is build **v2.2**. It runs fully offline in the browser: no server, no CDN, no account. An AI dialogue provider can be added in Settings, and its key stays in that browser only.
+This repository is build **v2.3**. It runs fully offline in the browser: no server, no CDN, no account. An AI dialogue provider can be added in Settings, and its key stays in that browser only.
 
 > © The owner of What Is Reality? (WIR). **All rights reserved.** This code and art are published so collaborators can read and improve them. No open-source license has been granted. Do not copy, reuse, or redistribute any part outside this project without the owner's written permission.
 
@@ -30,25 +30,34 @@ This repository is build **v2.2**. It runs fully offline in the browser: no serv
 
 On a phone, the **MELLA** button opens an 8-button power pad. The HUD in the top-left shows energy, stamina, CCR stability and Veyru's bond.
 
+### Villains and raids (new in v2.3)
+
+- **Villains:** ghosted METAL machines (Loader, Lifter, Walker, Scout Bot, Breacher) and the S1 bosses **BALLAST** and **GLASSJAW**. Enemies telegraph their attacks with an amber lane or arc. Hit them with your MELLA powers until they're **ISOLATED** (switched off, not killed).
+- **Start a raid:** walk to the raid beacon on the starter block and press **E** (or tap it), or open the phone **Y.O.U.R.** tab and tap **Start a raid here**. You face 4 waves, then a boss.
+- **Bosses:** BALLAST shrugs off direct hits. Jump his KA CHUNK shockwaves, and use ROOT or CORE under him between braces. GLASSJAW unlocks after Ballast.
+- **Work site:** step on the ⚙ marker in the plaza to wake a Labor Ghosting site.
+- **Getting knocked down costs nothing.** At 0 ♥ you're down for a few seconds, then you recover. A failed raid counts as a retreat; you keep your money and can retry right away.
+
 **Story path:** work a shift at Dex's Corner Store → SIKEE appears by the Corner Gym → beat the Training Drone in the Arena → talk to SIKEE → "Face SIKEE".
 
 ## Project structure
 
 ```
-index.html            Main game: WIR Valence Life v3 + the Y.O.U.R. layers (v2.0 → v2.1 → v2.2)
+index.html            Main game: WIR Valence Life v3 + the Y.O.U.R. layers (v2.0 → v2.1 → v2.2 → v2.3)
 football.html         Elemental Gridiron (WIR Retro Bowl), opened by index.html in an iframe or on its own
 games/                Labs linked from the city: ccr.html (CCR Living World), rifft.html (RIFFT Combat Lab)
 art/ spr/ aud/ fonts/ Valence Life art, sprites, sounds and local fonts (no font CDN)
 your/
   modules/            Y.O.U.R. engine modules (core, input, world, NPCs, HUD, jobs, skate, arena, dialogue, profile...)
-  v20/ v21/ v22/      Version layers installed on top of Valence (configs live here)
+  v20/ v21/ v22/ v23/ Version layers installed on top of Valence (configs live here); v23/vendor/ holds the Nimbus combat module
   game/               The v1.2.1 standalone game and v20_runner.html (activities run inside Valence)
   assets/             Hero, Mella, Sikee, Veyru and ChatGPT-drawn art
   tests/              In-browser unit tests (open B01_test.html ... B15_test.html)
   docs_v121/          Earlier design docs, including HERO_PROFILE_SCHEMA.md
   tools/              Art-cutting and report scripts (Python)
-tools/                build_v20/21/22.py: how index.html and football.html were patched (they need the original source files, which are not in this repo)
+tools/                build_v20…v23.py and extract_metal_machines.py: how index.html and football.html were patched (they need the original source files, which are not in this repo)
 docs/history/         Version reports and the changelog
+docs/screenshots/     A few v2.3 screenshots
 ASSET_SOURCES.csv     Where each asset came from
 ```
 

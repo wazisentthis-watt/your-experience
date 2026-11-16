@@ -1,3 +1,25 @@
+# Y.O.U.R. v2.3 · PROPOSAL_HOLD · CHANGELOG
+
+## 2026-11-16 · v2.3 proposal build: Y.O.U.R. Experience — Experience Wonders; fight villains and survive raids
+
+Times are America/New_York. This build is a copy of v2.2. Nothing was pushed or deployed, and v2.2 and the originals are unchanged (sha256 checked).
+
+Owner request (t74u): "Group we're called the Y O U R Experience, Experience Wonders, and you should be able to fight villains and survive raids …". The brand punctuation is UNCONFIRMED.
+
+- The brand appears on the page title, the start screen and the phone YOUR tab (`your/v23/your_v23_config.js` brand block).
+- Villain combat: the five METAL MACHINE_DEFS machines use real METAL sprites. BALLAST and GLASSJAW (METAL CANON S1 ladder) use labelled placeholder art.
+  - Machines have HP, telegraphs, hit reactions and an "isolated" defeat.
+  - The hero has 5 hearts, i-frames, knock-back, and knock-down with recovery.
+  - Veyru assists with a snare and calm.
+- Raids: four escalating METAL site waves, then a boss. The reward is paid through payroll. A failed raid is a retreat, with no loss.
+- All damage goes through the vendored, byte-identical Nimbus `wir_mella_combat.js` v1.2.0 lanes.
+- Saves: combat state goes into the Valence save and `games.your_combat` in wir_hero_profile. It is backward compatible.
+- QA:
+  - `qa/run_v23_qa.js`: 91/91
+  - v2.2 regression: 93/95 (title and subtitle, expected)
+  - v2.1 regression: 74/75 (title, expected)
+- Report: `V23_REPORT.md`, which includes the Passport mapping note. The Passport itself is not integrated.
+
 # Y.O.U.R. v2.2 · PROPOSAL_HOLD · CHANGELOG
 
 ## 2026-11-16 · v2.2 proposal build: you are the MELLA; Veyru (KAW) is your sidekick
