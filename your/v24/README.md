@@ -25,3 +25,10 @@ Status: draft PR, not published. Needs owner review before it ships.
 ## Tests
 - `node your/v24/tests/v24_wrapper.test.cjs` (9 passing, Node only).
 - B01–B15 browser pages: 94/94 passing.
+
+## MELLA powers: decided (owner delegated, 2026-11-16)
+- Hit and Blast stay as effect-only moves in the Valence city. Combat is arena-only (v1.2.1 FaFiFi rules).
+- Nimbus lanes (Valence Star shells, Divine-12, lane damage) stay off until the owner picks a scope.
+- Calm and the CCR bond boosts stay mapped to Veyru's bond (KoPani's trust numbers moved over).
+- The living circuit pays once per Valence day, not once per run.
+- Keys stay: Q jump, J hit, L blast, C calm, T transform, 1/2/3 ROOT/CORE/CROWN, Shift/K dash, H call Veyru, Z stay.
