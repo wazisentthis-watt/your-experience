@@ -126,6 +126,7 @@ button:focus-visible{outline:2px solid var(--electron);outline-offset:2px}
 #start .brand span{color:var(--electron)}
 #start .lede{color:var(--dim);max-width:60ch;margin:0 0 14px;font-size:15px}
 #start .opener{display:block;width:100%;max-width:520px;height:auto;margin:0 auto 14px;border-radius:12px;border:1px solid var(--line, #2a2440)}
+#start .intro-btns{display:flex;gap:8px;justify-content:center;margin:-6px 0 14px}
 .heroes{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
 .hero{display:flex;gap:11px;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:12px;align-items:flex-start}
 .hero:hover{border-color:var(--elc)}
@@ -1671,10 +1672,17 @@ const LIN_NOTE = { Engolo: 'Angolan kick-and-sweep art', Laamb: 'Senegalese wres
 const B = { step: 'mode', mode: 'testimony', start: 'walkon', el: 'C', name: '', pos: (window.YOUR_V21_FB ? YOUR_V21_FB.pos() : 'QB'), lin: 'Engolo', look: null };
 const START_SIM = { walkon: 'Sims: flat by week 8 for half of disciplined lives', rookie: 'Sims: 45% of average rookies get cut at camp', vet: 'Sims: net worth grows, but skip PT and speed slips', exile: 'Sims: 1 in 6 disciplined exiles reach a flat by week 12' };
 function defaultLook() { return P.randomLook(Math.floor(Math.random() * 999), { hair: 'afro', skin: P.SKINS[2].c, pat: 'kente', top: '#e8b923', top2: '#1f7a3a' }); }
+function openerSeen() { try { return sessionStorage.getItem('wir_intro_seen') === '1'; } catch (e) { return !!window.__introSeen; } }
+function markOpenerSeen() { try { sessionStorage.setItem('wir_intro_seen', '1'); } catch (e) { window.__introSeen = true; } }
+function openerHtml() {
+  if (openerSeen()) return '<img class="opener" src="art/opener/orbital-origins.jpg" alt="Orbital Origins: A Higher Harvest">';
+  return '<video id="introVid" class="opener" src="art/opener/orbital-origins-intro.mp4" poster="art/opener/orbital-origins.jpg" playsinline muted autoplay preload="auto" aria-label="Orbital Origins opener"></video>' +
+    '<div class="intro-btns"><button type="button" class="btn" id="introSound">Sound on</button><button type="button" class="btn" id="introSkip">Skip intro</button></div>';
+}
 function renderStart() {
   const sv = loadSave(), st = $('#start'); st.hidden = false;
   if (!B.look) B.look = defaultLook();
-  let h = (B.step === 'mode' ? '<img class="opener" src="art/opener/orbital-origins.jpg" alt="Orbital Origins: A Higher Harvest">' : '') + '<div class="brand">WIR <span>VALENCE</span> LIFE</div>';
+  let h = (B.step === 'mode' ? openerHtml() : '') + '<div class="brand">WIR <span>VALENCE</span> LIFE</div>';
   if (B.step === 'mode') {
     h += '<p class="lede">Your life is your electron shell. Every orbital is a life domain, every spin is a need. Your real-world check-ins charge your electrons, and your electrons are your force on the field.</p>';
     if (sv && sv.S) h += '<div class="cont"><button type="button" class="btn hot" id="contBtn">Continue · ' + esc(sv.S.name || M.ELEMENTS[sv.S.el].hero) + (sv.S.tm ? ' · Testimony ' + (sv.S.tm.league >= 0 ? M.LEAGUES[sv.S.tm.league].short : 'Combine') : '') + ' · Day ' + (M.day(sv.S) + 1) + '</button></div>';
@@ -1708,6 +1716,13 @@ function renderStart() {
     h += '<div class="btnrow"><button type="button" class="btn" data-back="hero">Back</button><button type="button" class="btn hot" id="goBtn">' + (B.mode === 'testimony' ? 'Start Testimony' : 'Start life') + '</button></div></div></div>';
   }
   st.innerHTML = h;
+  const iv = $('#introVid');
+  if (iv) {
+    const done = () => { markOpenerSeen(); renderStart(); };
+    iv.onended = done; iv.onerror = done;
+    $('#introSkip').onclick = done;
+    $('#introSound').onclick = () => { iv.muted = false; iv.currentTime = 0; $('#introSound').hidden = true; iv.play().catch(done); };
+  }
   const cb = $('#contBtn'); if (cb) cb.onclick = () => resume(sv);
   st.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { B.mode = b.dataset.mode; B.step = 'start'; renderStart(); });
   st.querySelectorAll('[data-start]').forEach(b => b.onclick = () => { B.start = b.dataset.start; B.step = 'hero'; renderStart(); });
