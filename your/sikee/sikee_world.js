@@ -19,6 +19,8 @@
   ];
   const SIKEE_DEF = { id: 'sikee', name: 'Sikee', title: 'Authority form', col: '#c9913a', dark: '#241a12', hp: 200, boss: true };
   const SIKEE_PHASES = [{ dmg: 6, every: 1.2 }, { dmg: 9, every: .9 }, { dmg: 12, every: .7 }];
+  // Sprite sheets per phase, with the number of filled frames in row 0.
+  const SIKEE_SHEETS = [{ name: 'sikee_authority', cols: 8 }, { name: 'sikee_mella', cols: 6 }, { name: 'sikee_ultra', cols: 7 }];
   const CIVILIANS = ['a Savannah baker', 'a schoolkid', 'a market vendor', 'a bus driver'];
   const HOME_HP = 60, MELLA_HIT = 12, HIT_CD = .35, RUN_CD = 3, PLANT_STEP_MS = 10 * 60 * 1000, KAW_TRIP_MS = 20000;
 
@@ -238,18 +240,24 @@
   // Sprite atlases: art/sikee/sheets/s01_<name>.png, 96px cells, rows = animations, cols = frames.
   const SPR = {};
   function sprite(name) {
-    if (!SPR[name]) { const i = new Image(); i.src = 'art/sikee/sheets/s01_' + name + '.png'; SPR[name] = i; }
+    if (!SPR[name]) { const i = new Image(); i.src = 'art/sikee/sheets/' + name + '.png'; SPR[name] = i; }
     return SPR[name].complete && SPR[name].naturalWidth ? SPR[name] : null;
   }
   function drawFoe(w, t) {
     const d = w.def, sc = w.boss ? 1.6 : 1, X = w.x * GM().T, Y = w.y * GM().T + Math.sin(t * 6 + w.x) * 1.2;
     GM().cx.save(); GM().cx.translate(X, Y); GM().cx.scale(sc, sc);
     GM().cx.fillStyle = 'rgba(0,0,0,.3)'; GM().cx.beginPath(); GM().cx.ellipse(0, 10, 9, 4, 0, 0, 7); GM().cx.fill();
-    const img = d.sprite ? sprite(d.sprite) : null;
+    // Sikee: three sheets, one per boss phase (1 = authority, 2 = Mella, 3 = Ultra Mella).
+    // Row 0 = idle/walk, row 1 = combat poses (shown while a strike lands).
+    const bossPhase = w.boss && R.battle && R.battle.foe === w ? R.battle.phase : 1;
+    const bossSet = w.boss ? SIKEE_SHEETS[bossPhase - 1] : null;
+    const img = bossSet ? sprite(bossSet.name) : (d.sprite ? sprite('s01_' + d.sprite) : null);
     if (img) {
-      const f = Math.floor(t * 6 + w.x) % 5;
+      const row = bossSet && R.battle && R.battle.foe === w && R.battle.strike > 0 ? 1 : 0;
+      const cols = bossSet ? bossSet.cols : 5;
+      const f = Math.floor(t * (row ? 12 : 6) + w.x) % cols;
       GM().cx.imageSmoothingEnabled = false;
-      GM().cx.drawImage(img, f * 96, 0, 96, 96, -24, -36, 48, 48);
+      GM().cx.drawImage(img, f * 96, row * 96, 96, 96, -24, -36, 48, 48);
     } else {
     GM().cx.strokeStyle = d.col; GM().cx.lineWidth = 2;
     for (let i = 0; i < 7; i++) {
@@ -279,7 +287,7 @@
   function drawPlants(t) {
     const stg = plantStage();
     const boxes = [[8.4, 4.4], [9.3, 4.4], [10.2, 4.4]];
-    const pimg = sprite('mounds_plants'); // row 4 of the mound sheet: five growth stages
+    const pimg = sprite('s01_mounds_plants'); // row 4 of the mound sheet: five growth stages
     for (let i = 0; i < boxes.length; i++) {
       if (stg <= i) continue;
       const X = boxes[i][0] * GM().T, Y = boxes[i][1] * GM().T, h = 4 + stg * 3 + Math.sin(t * 2 + i) * .5;
