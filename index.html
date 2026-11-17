@@ -1548,6 +1548,9 @@ const CITYB = {
     { slot: 'SW1', id: 'venue', name: 'Attuned Star Stage', div: 'The Attuned Star', sub: 'Gigs by Music level · the big shows', st: 'brick', awn: '#9a3f7a', acts: ['hang', 'gig', 'date', 'show'] },
   ],
 };
+// Cities linked by the road, west to east. The street row at y 14-15 runs off both map edges.
+// The line is a game abstraction, not real geography: each city's east exit leads to the next city.
+const ROAD_Y = [14, 16], ROAD_ORDER = ['SAV', 'JAX', 'NOLA', 'HOU', 'LA'];
 const PARK_NAMES = { SAV: 'Forsyth Skate Lot', JAX: 'Kona Bowl', NOLA: 'Bayou Skate Plaza', HOU: 'Third Ward Ramps', LA: 'Venice Bowl' };
 const RIVER = { SAV: 'Savannah River', JAX: 'St. Johns River', NOLA: 'Mississippi River' };
 
@@ -2072,23 +2075,66 @@ function openStation() {
   }
   openSheet(h, sh => { sh.querySelectorAll('[data-ride]').forEach(b => b.onclick = () => ride(b.dataset.ride)); sh.querySelectorAll('[data-drive]').forEach(b => b.onclick = () => ride(b.dataset.drive, true)); });
 }
+// Walking off the east or west edge of a city's street takes the road to the neighbouring city.
+// Same fares as the R-I-F-F-T station: gas only when you have a working car, full fare otherwise.
+function roadExit() {
+  const m = G.map; if (!m || m.id === 'HOME' || G.fade || G.sheet || G.phone || G.fb || G.lab) return;
+  if (G.py < ROAD_Y[0] || G.py > ROAD_Y[1]) return;
+  const dir = G.px < .3 ? -1 : G.px > m.w - .7 ? 1 : 0; if (!dir) return;
+  const i = ROAD_ORDER.indexOf(m.id), to = ROAD_ORDER[i + dir];
+  G.px = dir < 0 ? 1.3 : m.w - 1.3; // step back inside so the exit does not fire twice
+  if (!to) { if (!G.roadNoT || Date.now() - G.roadNoT > 3000) { G.roadNoT = Date.now(); toast('Nothing out that way yet.', 'dim'); } return; }
+  ride(to, !!(S.car && !S.car.broken));
+}
+// Driving / riding scene shown during a trip between cities: a scrolling road or rail line, a vehicle, and a progress bar.
+function ensureDriveUI() {
+  if (document.getElementById('drive')) return document.getElementById('drive');
+  const css = document.createElement('style');
+  css.textContent = '#drive{position:absolute;inset:0;z-index:26;background:linear-gradient(#1b1538,#0e0c1d);display:none;flex-direction:column;justify-content:center;align-items:center;overflow:hidden;color:var(--electron,#c9b6ff);font:600 13px var(--mono,monospace)}' +
+    '#drive.on{display:flex}#drive .dr-title{font:800 26px var(--display,sans-serif);letter-spacing:.14em;margin-bottom:6px}#drive .dr-sub{color:var(--dim,#9a94b8);margin-bottom:18px;text-align:center;padding:0 12px}' +
+    '#drive .dr-road{position:relative;width:100%;height:46px;background:#2b2b35;overflow:hidden}' +
+    '#drive .dr-road i{position:absolute;inset:0;background:repeating-linear-gradient(90deg,#f4d35e 0 36px,transparent 36px 84px);animation:drScroll .45s linear infinite}' +
+    '#drive[data-mode=rail] .dr-road{background:#3a3248}#drive[data-mode=rail] .dr-road i{background:repeating-linear-gradient(90deg,#8a7fa8 0 6px,transparent 6px 30px);animation-duration:.25s}' +
+    '@keyframes drScroll{from{background-position:0 0}to{background-position:-84px 0}}' +
+    '#drive .dr-car{width:64px;height:24px;margin:18px 0 8px;border-radius:8px 8px 4px 4px;background:#ff5a5a;position:relative}#drive[data-mode=rail] .dr-car{background:#5ad1ff;width:110px;height:20px;border-radius:6px}' +
+    '#drive .dr-car:before,#drive .dr-car:after{content:"";position:absolute;bottom:-6px;width:10px;height:10px;border-radius:50%;background:#111}#drive .dr-car:before{left:10px}#drive .dr-car:after{right:10px}' +
+    '#drive .dr-bar{width:70%;height:6px;background:#2a2236;border-radius:4px;overflow:hidden;margin-top:12px}#drive .dr-bar i{display:block;height:100%;width:0;background:var(--electron,#c9b6ff)}';
+  document.head.appendChild(css);
+  const el = document.createElement('div'); el.id = 'drive';
+  el.innerHTML = '<div class="dr-title"></div><div class="dr-sub"></div><div class="dr-road"><i></i></div><div class="dr-car"></div><div class="dr-bar"><i></i></div>';
+  $('#fade').parentElement.appendChild(el);
+  return el;
+}
+function showDrive(title, sub, ms, mode) {
+  const el = ensureDriveUI();
+  el.dataset.mode = mode;
+  el.querySelector('.dr-title').textContent = title;
+  el.querySelector('.dr-sub').textContent = sub;
+  const bar = el.querySelector('.dr-bar i');
+  bar.style.transition = 'none'; bar.style.width = '0%'; void bar.offsetWidth;
+  bar.style.transition = 'width ' + ms + 'ms linear'; bar.style.width = '100%';
+  el.classList.add('on');
+}
+function hideDrive() { const el = document.getElementById('drive'); if (el) el.classList.remove('on'); }
 function ride(to, drive, cb) {
   const rc0 = M.rideCost(S.city, to), rc = drive ? { c: Math.round(rc0.c * .4), h: Math.round(rc0.h * 1.3 * 2) / 2 } : rc0; if (S.money < rc.c) return toast('Need $' + rc.c, 'bad');
   if (drive) G.ride = 'car';
-  closeSheet(); S.money -= rc.c; G.fade = true; $('#fadeTxt').textContent = M.CITIES[S.city].name + ' → ' + M.CITIES[to].name + ' · ' + rc.h + 'h';
-  $('#fade').classList.add('on');
+  closeSheet(); S.money -= rc.c; G.fade = true;
+  // the trip takes a few seconds of real time, longer for more hours on the road
+  const ms = Math.min(6500, 1500 + rc.h * 500);
+  showDrive(drive ? 'Driving' : 'Riding the R·I·F·F·T', M.CITIES[S.city].name + ' → ' + M.CITIES[to].name + ' · ' + rc.h + 'h', ms, drive ? 'car' : 'rail');
   setTimeout(() => {
     for (let i = 0; i < rc.h * 4; i++) M.step(S, .25, hooks);
     const first = !S.visited[to];
     enterMap(to, MAPS[to].spawn);
     if (S.slots.Explore !== undefined) S.slots.Explore = Math.min(1, S.slots.Explore + .4);
     S.slots.Play = Math.min(1, S.slots.Play + .12);
-    $('#fade').classList.remove('on'); G.fade = false;
+    hideDrive(); G.fade = false;
     toast(M.CITIES[to].name + (first ? ' · first visit' : '') + '. ' + M.CITIES[to].air, 'gold');
     if (to !== 'SAV') setTimeout(() => toast('No home here. Sleep at the hostel ($45) or ride back.'), 1500);
     updateUI(); save();
     if (cb) setTimeout(cb, 250);
-  }, 900);
+  }, ms);
 }
 function openNpc(n) {
   if (n.rivalNpc) return openRival(n);
@@ -3663,7 +3709,7 @@ function frame(ts) {
     const a = S.busy ? M.ACTS[S.busy.id] : null;
     let gh = dt * G.speed * (a ? (a.sleep ? 1.9 : 1.3) : 1 / 7.5);
     while (gh > 1e-9 && !MG.cur) { const d = Math.min(.05, gh); M.step(S, d, hooks); gh -= d; }
-    if (!S.busy) movePlayer(dt);
+    if (!S.busy) { movePlayer(dt); roadExit(); }
     if (G.moving && outdoors() && G.ride === 'board') { S.slots.Play = Math.min(1, S.slots.Play + .05 * dt * G.speed * .1); if (S.slots.Explore !== undefined) S.slots.Explore = Math.min(1, S.slots.Explore + .002 * dt); }
     moveNpcs(dt); moveDog(dt); moveCars(dt);
     G.uiT += dt; if (G.uiT > .2) { G.uiT = 0; updateUI(); placeNpcs(false); checkGoals(); if (G.phone) renderPhone(true); }
