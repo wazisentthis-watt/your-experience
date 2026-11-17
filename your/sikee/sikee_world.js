@@ -223,8 +223,12 @@
       GM().toast('Sikee falls. The wood and grass start to loosen.', 'gold');
     } else {
       s.defeated++;
+      // bounty: more for villains that did more damage before they were stopped
+      const bounty = 20 + 5 * Math.min(10, f.crimes || 0);
+      if (GM().S) GM().S.money += bounty;
+      s.bounties = (s.bounties || 0) + bounty;
       const left = wreckCount(GM().G.map.id);
-      GM().toast(f.def.name + ' is stopped. ' + (left ? left + ' wreck' + (left > 1 ? 's' : '') + ' still need repair here.' : '') + (s.defeated >= 3 ? ' Sikee is watching now.' : ''), 'gold');
+      GM().toast(f.def.name + ' is stopped. +$' + bounty + ' bounty. ' + (left ? left + ' wreck' + (left > 1 ? 's' : '') + ' still need repair here.' : '') + (s.defeated >= 3 ? ' Sikee is watching now.' : ''), 'gold');
     }
     if (f.hold) {
       const r = s.rescues.find(x => x.id === f.hold);
@@ -248,6 +252,14 @@
       R.dist = 0; R.lastX = undefined; R.lastY = undefined;
     }
     if (!R.battle) R.hp = Math.min(HOME_HP, R.hp + dt * 1.5);
+    // status line: wrecks and loose villains on this map
+    R.stT = (R.stT || 0) - dt;
+    if (R.stT <= 0 && R.hud) {
+      R.stT = .5;
+      const loose = R.wanderers.filter(w => w.map === m.id && !w.boss).length, wr = wreckCount(m.id);
+      const el = document.getElementById('skStatus');
+      if (el) el.textContent = wr || loose ? 'Wrecks ' + wr + ' · Loose ' + loose : 'Road is clear';
+    }
 
     // open rescues: track the holder; expire them
     const now = Date.now();
@@ -444,6 +456,7 @@
     css.textContent = '#sikeeHud{position:absolute;left:10px;bottom:10px;z-index:4;display:flex;gap:6px}' +
       '#sikeeHud button,#sikeeBattle button{border:1px solid #55ddff;background:rgba(23,20,44,.92);color:#55ddff;border-radius:10px;padding:8px 10px;font:800 11px system-ui,sans-serif;cursor:pointer}' +
       '#sikeeHud button.on{background:#55ddff;color:#120e1e}' +
+      '#skStatus{align-self:center;font:700 11px system-ui,sans-serif;color:#f4eadb;background:rgba(23,20,44,.85);padding:6px 8px;border-radius:10px}' +
       '#sikeeBattle{position:fixed;inset:0;z-index:60;background:rgba(10,8,22,.78);display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;color:#f4eadb}' +
       '#sikeeBattle[hidden]{display:none}' +
       '.sk-box{background:#1b1420;border:2px solid #f3a93d;border-radius:14px;padding:16px;width:min(92vw,420px)}' +
@@ -453,7 +466,7 @@
     document.head.appendChild(css);
 
     const hud = document.createElement('div'); hud.id = 'sikeeHud';
-    hud.innerHTML = '<button type="button" id="skMellaBtn">MELLA · M</button><button type="button" id="skKawBtn">KAW HOME · K</button>';
+    hud.innerHTML = '<button type="button" id="skMellaBtn">MELLA · M</button><button type="button" id="skKawBtn">KAW HOME · K</button><span id="skStatus"></span>';
     document.body.appendChild(hud);
     hud.querySelector('#skMellaBtn').onclick = toggleMella;
     hud.querySelector('#skKawBtn').onclick = toggleKaw;
