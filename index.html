@@ -1548,6 +1548,9 @@ const CITYB = {
     { slot: 'SW1', id: 'venue', name: 'Attuned Star Stage', div: 'The Attuned Star', sub: 'Gigs by Music level · the big shows', st: 'brick', awn: '#9a3f7a', acts: ['hang', 'gig', 'date', 'show'] },
   ],
 };
+// Cities linked by the road, west to east. The street row at y 14-15 runs off both map edges.
+// The line is a game abstraction, not real geography: each city's east exit leads to the next city.
+const ROAD_Y = [14, 16], ROAD_ORDER = ['SAV', 'JAX', 'NOLA', 'HOU', 'LA'];
 const PARK_NAMES = { SAV: 'Forsyth Skate Lot', JAX: 'Kona Bowl', NOLA: 'Bayou Skate Plaza', HOU: 'Third Ward Ramps', LA: 'Venice Bowl' };
 const RIVER = { SAV: 'Savannah River', JAX: 'St. Johns River', NOLA: 'Mississippi River' };
 
@@ -2071,6 +2074,17 @@ function openStation() {
     h += '</div>';
   }
   openSheet(h, sh => { sh.querySelectorAll('[data-ride]').forEach(b => b.onclick = () => ride(b.dataset.ride)); sh.querySelectorAll('[data-drive]').forEach(b => b.onclick = () => ride(b.dataset.drive, true)); });
+}
+// Walking off the east or west edge of a city's street takes the road to the neighbouring city.
+// Same fares as the R-I-F-F-T station: gas only when you have a working car, full fare otherwise.
+function roadExit() {
+  const m = G.map; if (!m || m.id === 'HOME' || G.fade || G.sheet || G.phone || G.fb || G.lab) return;
+  if (G.py < ROAD_Y[0] || G.py > ROAD_Y[1]) return;
+  const dir = G.px < .3 ? -1 : G.px > m.w - .7 ? 1 : 0; if (!dir) return;
+  const i = ROAD_ORDER.indexOf(m.id), to = ROAD_ORDER[i + dir];
+  G.px = dir < 0 ? 1.3 : m.w - 1.3; // step back inside so the exit does not fire twice
+  if (!to) { if (!G.roadNoT || Date.now() - G.roadNoT > 3000) { G.roadNoT = Date.now(); toast('Nothing out that way yet.', 'dim'); } return; }
+  ride(to, !!(S.car && !S.car.broken));
 }
 function ride(to, drive, cb) {
   const rc0 = M.rideCost(S.city, to), rc = drive ? { c: Math.round(rc0.c * .4), h: Math.round(rc0.h * 1.3 * 2) / 2 } : rc0; if (S.money < rc.c) return toast('Need $' + rc.c, 'bad');
@@ -3663,7 +3677,7 @@ function frame(ts) {
     const a = S.busy ? M.ACTS[S.busy.id] : null;
     let gh = dt * G.speed * (a ? (a.sleep ? 1.9 : 1.3) : 1 / 7.5);
     while (gh > 1e-9 && !MG.cur) { const d = Math.min(.05, gh); M.step(S, d, hooks); gh -= d; }
-    if (!S.busy) movePlayer(dt);
+    if (!S.busy) { movePlayer(dt); roadExit(); }
     if (G.moving && outdoors() && G.ride === 'board') { S.slots.Play = Math.min(1, S.slots.Play + .05 * dt * G.speed * .1); if (S.slots.Explore !== undefined) S.slots.Explore = Math.min(1, S.slots.Explore + .002 * dt); }
     moveNpcs(dt); moveDog(dt); moveCars(dt);
     G.uiT += dt; if (G.uiT > .2) { G.uiT = 0; updateUI(); placeNpcs(false); checkGoals(); if (G.phone) renderPhone(true); }
