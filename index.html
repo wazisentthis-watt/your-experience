@@ -3681,7 +3681,7 @@ function dirOf(dx, dy) { return Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' :
 function outdoors() { return G.map && G.map.id !== 'HOME'; }
 function rideMul() { return !outdoors() ? 1 : G.ride === 'car' ? 2.6 : G.ride === 'board' ? 1.7 : 1; }
 function movePlayer(dt) {
-  const sp = speedNow() * rideMul() * dt * (G.rush ? 2.6 : 1);
+  const sp = speedNow() * rideMul() * dt * (G.rush ? 2.6 : 1) * (window.SIKEE && SIKEE.wreckSlow ? SIKEE.wreckSlow() : 1);
   let kx = (G.keys.arrowright || G.keys.d ? 1 : 0) - (G.keys.arrowleft || G.keys.a ? 1 : 0), ky = (G.keys.arrowdown || G.keys.s ? 1 : 0) - (G.keys.arrowup || G.keys.w ? 1 : 0);
   if (G.pad && (G.pad.ax || G.pad.ay)) { kx = G.pad.ax; ky = G.pad.ay; G.path = []; G.go = null; }
   G.moving = false;

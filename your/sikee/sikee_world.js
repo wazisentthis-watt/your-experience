@@ -3,7 +3,7 @@
  * Design: wir-100-studio octec/sections/sikee/DESIGN_SIKEE_BOSS_AND_VILLAINS_v1.md
  * Reads the game's globals (GM().S, GM().G, GM().T, GM().cx, GM().walkable, GM().toast, GM().save, enterMap) at call time.
  * Art is procedural placeholder until the owner's sprites are cut in.
- * Keys: M Mella on/off · J strike (Mella only) · X run · K send KAW home. */
+ * Keys: M Mella on/off · J strike (Mella only) · X run · K send KAW home · G repair a nearby wreck (hold 3s). */
 (function () {
   'use strict';
   const GM = () => window.WIR_GAME;
@@ -23,6 +23,13 @@
   const SIKEE_SHEETS = [{ name: 'sikee_authority', cols: 8 }, { name: 'sikee_mella', cols: 6 }, { name: 'sikee_ultra', cols: 7 }];
   const CIVILIANS = ['a Savannah baker', 'a schoolkid', 'a market vendor', 'a bus driver'];
   const HOME_HP = 60, MELLA_HIT = 12, HIT_CD = .35, RUN_CD = 3, PLANT_STEP_MS = 10 * 60 * 1000, KAW_TRIP_MS = 20000;
+  // Crimes: a villain on the road wrecks a tile every CRIME_MIN..CRIME_MAX seconds until it is beaten or escapes.
+  const CRIME_MIN = 18, CRIME_MAX = 28, ESCAPE_MS = 5 * 60 * 1000;
+  // Wrecks stay until repaired (stand next to one and hold G for REPAIR_S). Unrepaired wrecks spread every GROW_MS.
+  const REPAIR_S = 3, GROW_MS = 10 * 60 * 1000, WRECK_CAP = 40;
+  // Lingering effects: standing within WRECK_NEAR tiles of a wreck slows you to WRECK_SLOW of normal speed;
+  // every UPKEEP_S seconds the city bills $UPKEEP_FEE per unrepaired wreck (real time, see note in PR).
+  const WRECK_NEAR = 0.8, WRECK_SLOW = 0.55, UPKEEP_S = 60, UPKEEP_FEE = 5;
 
   const R = { wanderers: [], battle: null, dist: 0, cool: 0, lastX: undefined, lastY: undefined, lastMap: null,
     hp: HOME_HP, mella: false, hud: null, rolled: 0 };
@@ -31,7 +38,8 @@
   function st() {
     if (!GM().S) return null;
     if (!GM().S.sikee) GM().S.sikee = { defeated: 0, rescued: 0, failed: 0, bossDown: false, woodTiles: [], rescues: [],
-      plantStart: Date.now(), intrusions: 0, kawBlocked: 0, kawTrip: null };
+      plantStart: Date.now(), intrusions: 0, kawBlocked: 0, kawTrip: null, wrecks: [] };
+    if (!GM().S.sikee.wrecks) GM().S.sikee.wrecks = [];
     return GM().S.sikee;
   }
   function plantStage() { const s = st(); return s ? Math.min(4, Math.floor((Date.now() - s.plantStart) / PLANT_STEP_MS)) : 0; }
@@ -48,7 +56,7 @@
   }
   function makeWanderer(def, pos, opts) {
     const w = Object.assign({ def, boss: !!def.boss, x: pos[0], y: pos[1], hp: def.hp, max: def.hp,
-      map: GM().G.map.id, dx: 0, dy: 0, timer: 0, hold: null }, opts || {});
+      map: GM().G.map.id, dx: 0, dy: 0, timer: 0, hold: null, crimeT: CRIME_MIN + Math.random() * (CRIME_MAX - CRIME_MIN), since: Date.now(), crimes: 0 }, opts || {});
     R.wanderers.push(w);
     return w;
   }
@@ -73,6 +81,86 @@
     const pos = freeTileNear(GM().G.px, GM().G.py, 6, 11); if (!pos) return;
     makeWanderer(SIKEE_DEF, pos);
     GM().toast('Sikee is on the road.', 'gold');
+  }
+
+  // ---- crimes, wrecks and repair ----
+  function wreckAt(map, x, y) { const s = st(); return s && s.wrecks.find(k => k.map === map && k.x === x && k.y === y); }
+  function wreckCount(map) { const s = st(); return s ? s.wrecks.filter(k => k.map === map).length : 0; }
+  function addWreck(map, x, y, by) {
+    const s = st(); if (wreckAt(map, x, y) || s.wrecks.length >= WRECK_CAP) return false;
+    s.wrecks.push({ id: 'w' + Date.now().toString(36) + Math.floor(Math.random() * 1e4), map, x, y, by, grown: Date.now() });
+    return true;
+  }
+  function commitCrime(w) {
+    const s = st(), m = GM().G.map;
+    const pos = freeTileNear(w.x, w.y, 1, 2.5); if (!pos) return;
+    const x = Math.floor(pos[0]), y = Math.floor(pos[1]);
+    if (!addWreck(m.id, x, y, w.def.name)) return;
+    w.crimes++;
+    GM().toast(w.def.name + ' wrecked a tile. Beat it to stop the damage.', 'bad');
+    GM().save();
+  }
+  function growWrecks(now) {
+    const s = st(); if (!s) return;
+    const map = GM().G.map; if (!map) return;
+    // wrecks only spread on the map you are on: walkability is checked against the live map
+    for (const k of s.wrecks.slice()) {
+      if (k.map !== map.id || now - k.grown < GROW_MS) continue;
+      k.grown = now;
+      const d = [[1, 0], [-1, 0], [0, 1], [0, -1]][Math.floor(Math.random() * 4)];
+      const nx = k.x + d[0], ny = k.y + d[1];
+      if (GM().walkable(map, nx, ny) && addWreck(map.id, nx, ny, 'spread')) {
+        GM().toast('A wreck spread. Repair them before they take more road.', 'bad');
+        GM().save();
+      }
+    }
+  }
+  // Called by the main game's movePlayer(): slows the player near wrecks on the current map.
+  function wreckSlow() {
+    const s = st(), m = GM().G && GM().G.map; if (!s || !m || !s.wrecks.length) return 1;
+    for (const k of s.wrecks) {
+      if (k.map !== m.id) continue;
+      if (Math.hypot(k.x + .5 - GM().G.px, k.y + .5 - GM().G.py) < WRECK_NEAR) return WRECK_SLOW;
+    }
+    return 1;
+  }
+  function tickUpkeep(dt) {
+    const s = st(), S = GM().S; if (!s || !S) return;
+    R.upkeepT = (R.upkeepT || 0) + dt;
+    if (R.upkeepT < UPKEEP_S) return;
+    R.upkeepT = 0;
+    const n = s.wrecks.length; if (!n) return;
+    const fee = Math.min(S.money, UPKEEP_FEE * n);
+    if (fee <= 0) return;
+    S.money -= fee;
+    GM().toast('City cleanup fee: -$' + fee + ' for ' + n + ' unrepaired wreck' + (n > 1 ? 's' : '') + '.', 'bad');
+    GM().save();
+  }
+  function startRepair() {
+    const s = st(), m = GM().G.map; if (!s || !m || R.battle) return;
+    let best = null, bd = 1.6;
+    for (const k of s.wrecks) {
+      if (k.map !== m.id) continue;
+      const d = Math.hypot(k.x + .5 - GM().G.px, k.y + .5 - GM().G.py);
+      if (d < bd) { bd = d; best = k; }
+    }
+    if (!best) { GM().toast('Nothing to repair nearby.', 'dim'); return; }
+    R.repairing = best; R.repairT = 0;
+    GM().toast('Repairing... hold still.', 'gold');
+  }
+  function tickRepair(dt) {
+    const s = st(); if (!R.repairing || !s) return;
+    const k = R.repairing;
+    if (!s.wrecks.includes(k)) { R.repairing = null; return; }
+    const d = Math.hypot(k.x + .5 - GM().G.px, k.y + .5 - GM().G.py);
+    if (d > 1.8 || GM().G.map.id !== k.map) { R.repairing = null; GM().toast('Repair cancelled.', 'dim'); return; }
+    R.repairT += dt;
+    if (R.repairT >= REPAIR_S) {
+      s.wrecks.splice(s.wrecks.indexOf(k), 1);
+      R.repairing = null;
+      GM().toast('Repaired. The road is back.', 'gold');
+      GM().save();
+    }
   }
 
   // ---- movement, encounters and contact ----
@@ -135,7 +223,12 @@
       GM().toast('Sikee falls. The wood and grass start to loosen.', 'gold');
     } else {
       s.defeated++;
-      GM().toast(f.def.name + ' is beaten. ' + (s.defeated >= 3 ? 'Sikee is watching now.' : ''), 'gold');
+      // bounty: more for villains that did more damage before they were stopped
+      const bounty = 20 + 5 * Math.min(10, f.crimes || 0);
+      if (GM().S) GM().S.money += bounty;
+      s.bounties = (s.bounties || 0) + bounty;
+      const left = wreckCount(GM().G.map.id);
+      GM().toast(f.def.name + ' is stopped. +$' + bounty + ' bounty. ' + (left ? left + ' wreck' + (left > 1 ? 's' : '') + ' still need repair here.' : '') + (s.defeated >= 3 ? ' Sikee is watching now.' : ''), 'gold');
     }
     if (f.hold) {
       const r = s.rescues.find(x => x.id === f.hold);
@@ -159,6 +252,14 @@
       R.dist = 0; R.lastX = undefined; R.lastY = undefined;
     }
     if (!R.battle) R.hp = Math.min(HOME_HP, R.hp + dt * 1.5);
+    // status line: wrecks and loose villains on this map
+    R.stT = (R.stT || 0) - dt;
+    if (R.stT <= 0 && R.hud) {
+      R.stT = .5;
+      const loose = R.wanderers.filter(w => w.map === m.id && !w.boss).length, wr = wreckCount(m.id);
+      const el = document.getElementById('skStatus');
+      if (el) el.textContent = wr || loose ? 'Wrecks ' + wr + ' · Loose ' + loose : 'Road is clear';
+    }
 
     // open rescues: track the holder; expire them
     const now = Date.now();
@@ -173,10 +274,23 @@
       }
     }
     if (s.kawTrip && now >= s.kawTrip.until) finishKaw(s);
+    growWrecks(now);
+    tickRepair(dt);
+    tickUpkeep(dt);
 
     if (R.battle) { battleTick(dt); return; }
 
     moveWanderers(dt);
+    // crimes: each road villain wrecks a tile on a timer; villains that are not stopped escape after ESCAPE_MS
+    for (const w of R.wanderers.slice()) {
+      if (w.map !== m.id || w.boss || w.hold) continue;
+      w.crimeT -= dt;
+      if (w.crimeT <= 0) { commitCrime(w); w.crimeT = CRIME_MIN + Math.random() * (CRIME_MAX - CRIME_MIN); }
+      if (now - w.since > ESCAPE_MS) {
+        R.wanderers = R.wanderers.filter(x => x !== w);
+        GM().toast(w.def.name + ' got away. Its wrecks are still on the road.', 'bad'); GM().save();
+      }
+    }
     if (R.cool > 0) R.cool -= dt;
 
     // house: electronics can send a villain out while you are away
@@ -190,7 +304,8 @@
       R.lastX = GM().G.px; R.lastY = GM().G.py;
       if (R.dist >= 1) {
         R.dist -= 1;
-        if (Math.random() < 1 / 40) spawnRoadVillain();
+        // wrecks draw more villains to the area until they are repaired
+        if (Math.random() < (wreckCount(m.id) ? 1 / 20 : 1 / 40)) spawnRoadVillain();
         if (s.defeated >= 3 && !s.bossDown && Math.random() < 1 / 60) spawnSikeeOnRoad();
       }
     }
@@ -285,6 +400,22 @@
     GM().cx.fillStyle = '#6fbf4a';
     for (let i = 0; i < 5; i++) { GM().cx.beginPath(); GM().cx.arc(X + 6 + i * 5, Y + GM().T - 5, 3, 0, 7); GM().cx.fill(); }
   }
+  function drawWreck(k, t) {
+    const X = k.x * GM().T, Y = k.y * GM().T, c = GM().cx;
+    c.fillStyle = '#2a2220'; c.fillRect(X + 2, Y + 2, GM().T - 4, GM().T - 4);
+    c.strokeStyle = '#120e0c'; c.lineWidth = 1;
+    c.beginPath(); c.moveTo(X + 6, Y + 8); c.lineTo(X + 16, Y + 14); c.lineTo(X + 10, Y + 22); c.stroke();
+    c.beginPath(); c.moveTo(X + 20, Y + 5); c.lineTo(X + 26, Y + 16); c.stroke();
+    c.fillStyle = '#4a3a2c';
+    for (let i = 0; i < 3; i++) c.fillRect(X + 5 + i * 8, Y + 22 + (i % 2) * 3, 5, 3);
+    const puff = (t * 0.6 + k.x * 0.37) % 1;
+    c.globalAlpha = 0.35 * (1 - puff); c.fillStyle = '#9a9a9a';
+    c.beginPath(); c.arc(X + GM().T / 2, Y + 8 - puff * 10, 3 + puff * 3, 0, 7); c.fill(); c.globalAlpha = 1;
+    if (R.repairing === k) {
+      c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(X, Y - 6, GM().T, 3);
+      c.fillStyle = '#ffd166'; c.fillRect(X, Y - 6, GM().T * Math.min(1, R.repairT / REPAIR_S), 3);
+    }
+  }
   function drawPlants(t) {
     const stg = plantStage();
     const boxes = [[8.4, 4.4], [9.3, 4.4], [10.2, 4.4]];
@@ -314,6 +445,7 @@
     for (const w of R.wanderers) if (w.map === m.id) out.push({ y: w.y + .2, f: () => drawFoe(w, t) });
     const s = st();
     if (s) for (const wt of s.woodTiles) if (wt.map === m.id) out.push({ y: wt.y + .05, f: () => drawWood(Math.floor(wt.x), Math.floor(wt.y)) });
+    if (s) for (const k of s.wrecks) if (k.map === m.id) out.push({ y: k.y + .05, f: () => drawWreck(k, t) });
     return out;
   }
 
@@ -324,6 +456,7 @@
     css.textContent = '#sikeeHud{position:absolute;left:10px;bottom:10px;z-index:4;display:flex;gap:6px}' +
       '#sikeeHud button,#sikeeBattle button{border:1px solid #55ddff;background:rgba(23,20,44,.92);color:#55ddff;border-radius:10px;padding:8px 10px;font:800 11px system-ui,sans-serif;cursor:pointer}' +
       '#sikeeHud button.on{background:#55ddff;color:#120e1e}' +
+      '#skStatus{align-self:center;font:700 11px system-ui,sans-serif;color:#f4eadb;background:rgba(23,20,44,.85);padding:6px 8px;border-radius:10px}' +
       '#sikeeBattle{position:fixed;inset:0;z-index:60;background:rgba(10,8,22,.78);display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;color:#f4eadb}' +
       '#sikeeBattle[hidden]{display:none}' +
       '.sk-box{background:#1b1420;border:2px solid #f3a93d;border-radius:14px;padding:16px;width:min(92vw,420px)}' +
@@ -333,7 +466,7 @@
     document.head.appendChild(css);
 
     const hud = document.createElement('div'); hud.id = 'sikeeHud';
-    hud.innerHTML = '<button type="button" id="skMellaBtn">MELLA · M</button><button type="button" id="skKawBtn">KAW HOME · K</button>';
+    hud.innerHTML = '<button type="button" id="skMellaBtn">MELLA · M</button><button type="button" id="skKawBtn">KAW HOME · K</button><span id="skStatus"></span>';
     document.body.appendChild(hud);
     hud.querySelector('#skMellaBtn').onclick = toggleMella;
     hud.querySelector('#skKawBtn').onclick = toggleKaw;
@@ -385,11 +518,13 @@
     if (GM().G.sheet || GM().G.phone || GM().G.fb || GM().G.lab || GM().MG.cur) return;
     if (k === 'm') toggleMella();
     else if (k === 'k') toggleKaw();
+    else if (k === 'g') startRepair();
   });
 
   window.SIKEE = {
     tick, enterMap: onEnterMap, drawList,
     blocking: () => !!R.battle,
-    debug: { R, st, plantStage, spawnRoadVillain, spawnSikeeOnRoad, startBattle },
+    wreckSlow,
+    debug: { R, st, plantStage, spawnRoadVillain, spawnSikeeOnRoad, startBattle, commitCrime, wreckCount, startRepair, tickUpkeep },
   };
 })();
