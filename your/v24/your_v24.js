@@ -28,7 +28,8 @@
     refuseCooldown: 20, safeBond: 30,                   // owner decision 2
     saveEvery: 2, roamRadius: 6, roamPause: [2, 5],
     hazardNear: 4, hazardFar: 8,                        // tiles, from v2.3 foes and boss (PROPOSED)
-    navWindow: 20, navBudget: 2000, routeRetry: 2, affRetry: 3, stuckFrames: 90
+    navBudget: 2000, routeRetry: 2, affRetry: 3, stuckFrames: 90,
+    dwell: 4                                            // seconds to stay at a resource after it satisfies (PROPOSED, relay 007)   // navBudget: minimum node budget; a search is also capped by map area
   };
   var AFF_KIND = { drink: 'water', forage: 'food', rest: 'rest' };
   var AFF_OBJ = { fridge: 'food', bed: 'rest', couch: 'rest' };     // live HOME object ids
@@ -92,10 +93,11 @@
   }
 
   /* ---- affordances from the live map (fix 3) ---- */
-  var affCache = {};
+  var affCache = {}, AFF_TTL = 2;                       // seconds: the map can change (water drained), so re-read it
   function affordances(env) {
     var m = env.map; if (!m || !m.t || !m.w) return { water: [], food: [], rest: [] };
-    if (affCache[m.id]) return affCache[m.id];
+    var hit = affCache[m.id];
+    if (hit && state.clock - hit.at < AFF_TTL) return hit.out;
     var out = { water: [], food: [], rest: [] }, x, y, i, j, d;
     for (y = 0; y < m.h; y++) for (x = 0; x < m.w; x++) {
       if (m.t[y * m.w + x] !== WATER) continue;
@@ -108,7 +110,7 @@
         if (env.walk(i + .5, j + .5)) out[kind].push({ x: i + .5, y: j + .5 });
       }
     });
-    affCache[m.id] = out;
+    affCache[m.id] = { at: state.clock, out: out };
     return out;
   }
   function affordanceSpot(env, kind) {
@@ -118,6 +120,18 @@
     for (var i = 0; i < sorted.length && i < 6; i++) if (findRoute(env, k, sorted[i]) !== null) return sorted[i];
     return null;
   }
+  // Drinking needs water on the live map next to Veyru: a water tile within 1.2 tiles of Veyru's position.
+  function waterNow(env) {
+    var m = env.map; if (!m || !m.t || !m.w) return false;
+    var kx = Math.floor(env.kaw.x), ky = Math.floor(env.kaw.y);
+    for (var j = ky - 2; j <= ky + 2; j++) for (var i = kx - 2; i <= kx + 2; i++) {
+      if (i < 0 || j < 0 || i >= m.w || j >= m.h || m.t[j * m.w + i] !== WATER) continue;
+      // distance from Veyru to the nearest edge of that water tile
+      var ex = Math.max(0, i - env.kaw.x, env.kaw.x - (i + 1)), ey = Math.max(0, j - env.kaw.y, env.kaw.y - (j + 1));
+      if (Math.hypot(ex, ey) <= 1.2) return true;
+    }
+    return false;
+  }
   function nearAffordance(env, kind, r) {
     var list = affordances(env)[kind] || [];
     for (var i = 0; i < list.length; i++) if (dist(env.kaw, list[i]) <= r) return true;
@@ -125,20 +139,22 @@
   }
 
   /* ---- reachability (fix 1): bounded BFS over tiles, budgeted ---- */
+  // Relay 007 fix: the search covers the whole map (it used to stop 20 tiles from Veyru, so water farther away was
+  // reported unreachable). It always terminates: the node budget is the map area, so it cannot run away.
   function findRoute(env, from, to) {
-    var W = CFG.navWindow, sx = Math.floor(from.x), sy = Math.floor(from.y), tx = Math.floor(to.x), ty = Math.floor(to.y);
+    var sx = Math.floor(from.x), sy = Math.floor(from.y), tx = Math.floor(to.x), ty = Math.floor(to.y);
     if (sx === tx && sy === ty) return [];
-    if (Math.abs(tx - sx) > W || Math.abs(ty - sy) > W) return null;
     if (!env.walk(tx + .5, ty + .5) || !env.walk(sx + .5, sy + .5)) return null;
+    var m = env.map, area = (m && m.w && m.h) ? m.w * m.h : 0, budget = Math.max(CFG.navBudget, area + 1);
     var start = sx + ',' + sy, goal = tx + ',' + ty, prev = new Map(), q = [[sx, sy]], qi = 0, work = 0;
     prev.set(start, null);
     while (qi < q.length) {
-      if (++work > CFG.navBudget) return null;                                 // budget spent: treat as unreachable
+      if (++work > budget) return null;                                        // budget spent: treat as unreachable
       var c = q[qi++], cx = c[0], cy = c[1];
       if (cx === tx && cy === ty) break;
       for (var d = 0; d < 4; d++) {
         var nx = cx + DIRS[d][0], ny = cy + DIRS[d][1], key = nx + ',' + ny;
-        if (prev.has(key) || Math.abs(nx - sx) > W || Math.abs(ny - sy) > W) continue;
+        if (prev.has(key) || (area && (nx < 0 || ny < 0 || nx >= m.w || ny >= m.h))) continue;
         if (!env.walk(nx + .5, ny + .5)) continue;
         prev.set(key, cx + ',' + cy); q.push([nx, ny]);
       }
@@ -164,6 +180,7 @@
     var k = env.kaw, t = state.target; k.moving = false;
     if (!t) return;
     var stop = state.stopAt || 0.3, r = null;
+    if (dist(k, t) <= stop) state.route = null;                               // arrived: the trip is over
     if (dist(k, t) > stop) {
       r = routeTo(env, t);
       if (r === null) {
@@ -175,7 +192,9 @@
     var wp = (r && r.length) ? r[0] : t, dx = wp.x - k.x, dy = wp.y - k.y, d = Math.hypot(dx, dy);
     if (r && r.length) { if (d <= 0.12) { r.shift(); state.route = r; state.stuck = 0; return; } }
     else if (d <= stop) return;
-    var sp = (d > 6 ? CFG.sprint : CFG.speed) * dt;
+    // Relay 007 fix: never step past the waypoint. A large step (a slow frame or a long dt) used to overshoot,
+    // then walk back, and repeat forever at the waypoint.
+    var sp = Math.min((d > 6 ? CFG.sprint : CFG.speed) * dt, d);
     var nx = k.x + dx / d * sp, ny = k.y + dy / d * sp, moved = false;
     if (env.walk(nx, ny)) { k.x = nx; k.y = ny; moved = true; }
     else if (env.walk(nx, k.y)) { k.x = nx; moved = true; }
@@ -214,7 +233,11 @@
   function chooseTarget(env, dt) {
     var k = env.kaw, hero = { x: env.px, y: env.py }, here = { x: k.x, y: k.y }, act = state.activity;
     state.intent = act;                                                     // the brain's choice, kept as-is
-    if (act !== state.targetKind) { state.target = null; state.targetKind = act; state.roamWait = null; state.affCooldown = 0; }
+    // Relay 007: a trip already under way (a route with steps left) is finished before the intent can redirect it.
+    // Without this, two near-equal needs made Veyru walk back and forth between the fridge and the water.
+    var trip = state.motor === 'route' && state.target && state.route && state.route.length > 0;
+    if (act !== state.targetKind && !trip) { state.target = null; state.targetKind = act; state.roamWait = null; state.affCooldown = 0; }
+    else if (act !== state.targetKind) state.targetKind = act;
     // Preferred social distance (owner): within ~6 tiles of the hero Veyru may do anything; beyond that it comes back.
     // Not a leash: a stay command is respected, and needs may still send Veyru farther out while the hero is near.
     if (state.accompanied && state.stayUntil == null && act !== 'follow' && act !== 'come' && act !== 'socialize' && dist(here, hero) > CFG.preferred) {
@@ -223,9 +246,13 @@
     if (act === 'follow' || act === 'come') { setTarget(hero, CFG.gap, 'approach'); return; }
     if (act === 'socialize') { setTarget(hero, CFG.social, 'approach'); return; }
     if (act === 'stay' || act === 'hide' || act === 'guard') { setTarget(here, 0.3, 'hold'); return; }
+    // Relay 007: after a resource satisfies a need, hold there for CFG.dwell seconds even if the brain's intent flips
+    // (two near-equal needs would otherwise bounce Veyru between spots and she would never finish eating or drinking).
+    // Intent is untouched; only the motor holds. This does not change any probability.
+    if (state.dwell && state.clock < state.dwell.until && dwellHere(env, state.dwell.kind)) { setTarget(here, 0.3, 'hold'); return; }
     var kind = AFF_KIND[act];
     if (kind) {
-      if (state.target && state.motor === 'route') return;                  // following a route to the spot; motor clears it if unreachable
+      if (trip) return;                                                     // still walking to the spot; a finished trip lets the new intent choose
       if (!(state.affCooldown > state.clock)) {
         var spot = affordanceSpot(env, kind);
         if (spot) { setTarget(spot, 0.3, 'route'); clearIncomplete(act); return; }
@@ -246,7 +273,10 @@
     state.lastHazard = h;
     // Stand-in: standing at the kitchen spot counts as eating. There is no food item in the world yet.
     var hasFood = state.activity === 'forage' && nearAffordance(env, 'food', 1.2);
+    // Relay 007: thirst falls only while Veyru is actually drinking at accessible water (module flag canDrink).
+    var canDrink = state.activity === 'drink' && waterNow(env);
     return {
+      canDrink: canDrink,
       position: { x: env.kaw.x, y: env.kaw.y },
       player: { x: env.px, y: env.py },
       inHome: mid === HOME,
@@ -304,14 +334,9 @@
     if (mid !== lastMap) transitionPlace(env, mid);
     applyOffMap(env);
     var step = Math.min(dt, 0.25), ctx = ctxFrom(env);
-    var thBefore = state.needs ? state.needs.thirst : null;
     B.tick(state, ctx, step);
-    // The module lowers thirst whenever activity is 'drink', even far from water. Drink counts only at the water spot.
-    // Away from water, thirst takes only its natural rise for this step (module rate 0.20/s), so it is not cancelled.
-    if (thBefore != null && state.activity === 'drink' && !nearAffordance(env, 'water', 1.2)) {
-      state.needs.thirst = Math.max(0, Math.min(100, thBefore + step * 0.20));
-    }
     recordOutcome(env, ctx);
+    maybeDebug();
     if (env.kaw.off) { env.kaw.moving = false; maybeSave(); return; }
     chooseTarget(env, dt);
     moveAlong(env, dt);
@@ -319,12 +344,15 @@
   }
   // Outcome (relay 004 item 4): what the intent achieved this step. Kept apart from intent (activity) and motor.
   // satisfied: true only when the need was actually met at the resource; false while still pending; null when no need applies.
+  var NEED_SPOT = { hunger: 'food', thirst: 'water', restNeed: 'rest' };
+  function dwellHere(env, kind) { return kind === 'water' ? waterNow(env) : nearAffordance(env, kind, 1.2); }
   function recordOutcome(env, ctx) {
     var act = state.activity, need = null, satisfied = null, place = null;
-    if (act === 'drink') { need = 'thirst'; satisfied = nearAffordance(env, 'water', 1.2); }
+    if (act === 'drink') { need = 'thirst'; satisfied = !!ctx.canDrink; }
     else if (act === 'forage') { need = 'hunger'; satisfied = !!ctx.hasFood; }
     else if (act === 'rest') { need = 'restNeed'; place = nearAffordance(env, 'rest', 1.2) ? 'bed' : 'in place'; satisfied = place === 'bed'; }
     state.outcome = { intent: act, motor: state.motor || null, need: need, satisfied: satisfied, place: place, at: state.clock };
+    if (satisfied && NEED_SPOT[need]) state.dwell = { kind: NEED_SPOT[need], until: state.clock + CFG.dwell };
   }
   function maybeSave() { if (state.clock - lastSave >= CFG.saveEvery) { lastSave = state.clock; save(); } }
 
@@ -377,6 +405,26 @@
     save();
   }
 
+  /* ---- debug status (relay 007): F2 toggles a small line; off by default ---- */
+  function debugLine() {
+    var n = state.needs || {}, o = state.outcome || {}, r = function (v) { return typeof v === 'number' ? Math.round(v) : '-'; };
+    return 'intent ' + (state.intent || state.activity) + ' | activity ' + state.activity + ' | motor ' + (state.motor || '-') +
+      ' | hunger ' + r(n.hunger) + ' thirst ' + r(n.thirst) + ' rest ' + r(n.restNeed) + ' social ' + r(n.socialNeed) +
+      ' | outcome ' + (o.need ? o.need + (o.satisfied ? ' met' : ' pending') + (o.place ? ' (' + o.place + ')' : '') : 'none');
+  }
+  var dbgEl = null, dbgOn = false, dbgTick = 0;
+  function maybeDebug() { if (!dbgOn || !dbgEl) return; if (++dbgTick % 15 === 0) dbgEl.textContent = debugLine(); }
+  function toggleDebug() {
+    dbgOn = !dbgOn;
+    if (dbgOn && !dbgEl && document.body) {
+      dbgEl = document.createElement('div'); dbgEl.id = 'kaw-v24-debug';
+      dbgEl.style.cssText = 'position:fixed;left:8px;top:8px;max-width:60vw;font:12px ui-monospace,monospace;color:#7cf0e0;background:rgba(0,0,0,.6);padding:4px 8px;border-radius:4px;z-index:9997;pointer-events:none';
+      document.body.appendChild(dbgEl);
+    }
+    if (dbgEl) dbgEl.style.display = dbgOn ? 'block' : 'none';
+    if (dbgOn && dbgEl) dbgEl.textContent = debugLine();
+  }
+
   /* ---- keys (desktop) and on-screen buttons (mobile) ---- */
   function envGetter() { return V22.brainEnv ? V22.brainEnv() : null; }
   window.addEventListener('keydown', function (e) {
@@ -385,6 +433,7 @@
     if (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT') return;
     if (e.code === 'KeyH') call(envGetter());
     if (e.code === 'KeyZ') stayToggle(envGetter());
+    if (e.code === 'F2') toggleDebug();
   });
   // Relay 003: put VEYRU / STAY inside the existing v2.0 touch column (#yourMoves) instead of floating new buttons.
   // That column already lays out the MELLA and sprint buttons for phones, so nothing new is laid over the controls.
@@ -402,7 +451,7 @@
   (function touchClearance() {
     try {
       var st = document.createElement('style'); st.id = 'kaw-v24-touch-clear';
-      st.textContent = 'body:has(#your-touch[style*="display: block"]) #yourMoves{bottom:calc(min(100vw,100vh) * .3 + 10px) !important}';
+      st.textContent = 'body:has(#your-touch[style*="display: block"]) #yourMoves,body:has(#your-touch[style*="display: block"]) #yourPowers{bottom:calc(min(100vw,100vh) * .3 + 10px) !important}';
       (document.head || document.documentElement).appendChild(st);
     } catch (e) { /* no document head (e.g. a test stub): nothing to style */ }
   })();
@@ -434,6 +483,7 @@
   window.YOUR_V24 = {
     state: function () { return state; }, outcome: function () { return state.outcome || null; },
     hero: function () { return boundHero; }, ready: bindHero, CFG: CFG,
-    call: call, stayToggle: stayToggle, save: save, affordances: affordances, findRoute: findRoute, kaw: KC.id
+    call: call, stayToggle: stayToggle, save: save, affordances: affordances, findRoute: findRoute, kaw: KC.id,
+    debugLine: debugLine, toggleDebug: toggleDebug
   };
 })();

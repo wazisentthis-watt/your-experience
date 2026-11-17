@@ -32,6 +32,7 @@ const SIZES = [
     const r = await page.evaluate(() => {
       // Show the overlay the way a phone does: the first touch on the window (your_input.js shows it then).
       window.dispatchEvent(new Event('touchstart'));
+      const pw = document.getElementById('yourPowers'); if (pw) pw.hidden = false;   // MELLA power panel, opened
       if (window.__NO_LIFT) { const t = document.getElementById('kaw-v24-touch-clear'); if (t) t.remove(); }   // control run: rule off
       const cv = document.getElementById('your-touch');
       const overlayOn = !!cv && cv.style.display === 'block';

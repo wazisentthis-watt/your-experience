@@ -4,6 +4,11 @@
  * plus Veyru intake temperament and the owner's ask-to-come / ask-to-leave-house brief.
  * Numeric thresholds are gameplay PROPOSALS unless inherited from v1.2 and so labeled.
  * Kito / personhood firewall: identities named Kito are rejected (v1.2 rule).
+ *
+ * CHANGE LOG (v0.1-canDrink, approved in relay 007). Original kept as wir_kaw_living_brain.v0.1.orig.js (sha256 prefix 99819ffcc1c3890f).
+ *  - integrateNeeds: thirst falls on 'drink' only when context.canDrink === true. Omitted flag = original behavior, so older callers
+ *    and saved states are unchanged. The Y.O.U.R. wrapper always passes an explicit canDrink.
+ *  - No state fields added; schema stays wir.kaw.brain/0.1.
  */
 (function (root, factory) {
   const api = factory();
@@ -176,7 +181,9 @@
     if (s.activity === 'forage') n.curiosityCharge = clamp(n.curiosityCharge - dt * 0.3, 0, 100);
     if (s.activity === 'explore' || s.activity === 'investigate') n.curiosityCharge = clamp(n.curiosityCharge - dt * 0.7, 0, 100);
     if (s.activity === 'follow' || s.activity === 'come') n.socialNeed = clamp(n.socialNeed - dt * 0.5, 0, 100);
-    if (s.activity === 'drink') n.thirst = clamp(n.thirst - dt * 6, 0, 100);
+    /* v0.1 original: thirst fell on any 'drink' activity. Change (v0.1-canDrink): only when the caller says
+     * canDrink === true. A caller that omits the flag keeps the original behavior (see v0.1.orig.js). */
+    if (s.activity === 'drink' && (c.canDrink === undefined || c.canDrink === true)) n.thirst = clamp(n.thirst - dt * 6, 0, 100);
     if (s.activity === 'forage' && c.hasFood) n.hunger = clamp(n.hunger - dt * 5, 0, 100);
   }
 
