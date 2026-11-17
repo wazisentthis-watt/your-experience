@@ -1422,6 +1422,7 @@ document.documentElement.style.setProperty('--food',"url('data:image/png;base64,
 <script src="your/v23/your_v23.js"></script>
 <script src="your/v24/wir_kaw_living_brain.js"></script>
 <script src="your/v24/your_v24.js"></script>
+<script src="your/sikee/sikee_world.js"></script>
 <script src="your/muse/your_muse.js"></script>
 <script>
 (() => {
@@ -1820,6 +1821,7 @@ function enterMap(id, at) {
   G.npcs = NPCS.filter(n => n.city === id).map(n => Object.assign({ x: 0, y: 0, tx: 0, ty: 0, path: [], vis: false, spot: null }, n));
   spawnRival();
   placeNpcs(true); spawnPeds(); spawnCars(); updateRideBtn(); mpEnter(id);
+  if (window.SIKEE) SIKEE.enterMap(id);
 }
 // a player from your next opponent is out in the city. Your aura decides who backs down.
 function spawnRival() {
@@ -3030,6 +3032,7 @@ function render(t) {
   for (const o of m.objs) draws.push({ y: o.y + o.h, f: () => drawObj(o, t) });
   for (const n of G.npcs.concat(G.peds)) if (n.vis) draws.push({ y: n.y + .2, f: () => drawPerson(n, t) });
   for (const q of G.peers || []) if (q.map === m.id) draws.push({ y: q.y + .2, f: () => drawPeer(q, t) });
+  if (window.SIKEE) for (const d of SIKEE.drawList(m, t)) draws.push(d);
   if (m.id === 'HOME') draws.push({ y: G.dog.y + .1, f: () => drawDog(G.dog.x, G.dog.y, t) });
   draws.push({ y: G.py + .24, f: () => drawPlayerBackElectrons(t) }); draws.push({ y: G.py + .25, f: () => drawPlayer(t) });
   draws.sort((a, b) => a.y - b.y).forEach(d => d.f());
@@ -3539,6 +3542,7 @@ function openDog() { openSheet('<h3>Your dog</h3><div class="sh-sub">Feeding and
 addEventListener('keydown', e => {
   if (MG.cur) return;
   if (!S || $('#start').hidden === false) return;
+  if (window.SIKEE && SIKEE.blocking()) return;
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
   const k = e.key.toLowerCase();
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) { if (G.sheet || G.phone) return; G.keys[k] = 1; G.path = []; G.go = null; e.preventDefault(); }
@@ -3628,8 +3632,12 @@ $('#labEnd').onclick = () => {
   toast(LABS[L.id].name + ': ' + min.toFixed(1) + ' active minutes · +' + xp + ' ' + M.SKILLS[sk] + ' xp', 'gold'); updateUI(); save();
 };
 
+/* bridge for your/sikee/sikee_world.js: reads game state at call time */
+window.WIR_GAME = { get S() { return S; }, get G() { return G; }, get cx() { return cx; }, get T() { return T; }, get MG() { return MG; },
+  walkable: (...a) => walkable(...a), toast: (...a) => toast(...a), save: () => save(), enterMap: (...a) => enterMap(...a) };
+
 /* ---- the loop ---- */
-function paused() { return !S || G.sheet || G.phone || G.fade || G.fb || G.lab || MG.cur || !$('#start').hidden; }
+function paused() { return !S || G.sheet || G.phone || G.fade || G.fb || G.lab || MG.cur || !$('#start').hidden || !!(window.SIKEE && SIKEE.blocking()); }
 let goalsSeen = {};
 function frame(ts) {
   const dt = Math.min(.05, (ts - (G.last || ts)) / 1000); G.last = ts;
@@ -3646,6 +3654,7 @@ function frame(ts) {
     G.saveT += dt; if (G.saveT > 6) { G.saveT = 0; save(); }
     G.mpT = (G.mpT || 0) + dt; if (G.mpT > 20) { G.mpT = 0; mpScore(); mpTaxes(); }
   }
+  if (S && window.SIKEE) SIKEE.tick(dt);
   if (S) mpTick(dt);
   render(ts / 1000);
   requestAnimationFrame(frame);
