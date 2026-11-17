@@ -9,13 +9,13 @@
   const GM = () => window.WIR_GAME;
 
   const VILLAINS = [
-    { id: 'if00', name: 'IF-00', title: 'The First Condition', col: '#ff7d2a', dark: '#3a1d0c', hp: 40, dmg: 5, every: 1.6, sprite: 'rock_armadillo' },
-    { id: 'pweza', name: 'PWEZA', title: 'Parallel Process Coordinator', col: '#e0408a', dark: '#3b1024', hp: 55, dmg: 6, every: 1.5, sprite: 'bird' },
-    { id: 'tembo', name: 'TEMBO', title: 'Persistent World Memory', col: '#3c8dff', dark: '#14213d', hp: 80, dmg: 8, every: 1.9 },
-    { id: 'duma', name: 'DUMA', title: 'Latency Governor', col: '#ffc73a', dark: '#1a1408', hp: 45, dmg: 7, every: 1.2, sprite: 'hound' },
-    { id: 'buibui', name: 'BUIBUI', title: 'Dependency-Web Architect', col: '#38d6d0', dark: '#122a2c', hp: 50, dmg: 6, every: 1.4, sprite: 'frog' },
-    { id: 'simba', name: 'SIMBA', title: 'World Orchestrator', col: '#d63a2a', dark: '#2a0f0b', hp: 70, dmg: 7, every: 1.5 },
-    { id: 'fisi', name: 'FISI', title: 'Recycler and Scavenger', col: '#7cc24a', dark: '#23301a', hp: 60, dmg: 6, every: 1.5, sprite: 'moss_armadillo' },
+    { id: 'if00', name: 'IF-00', title: 'The First Condition', col: '#ff7d2a', dark: '#3a1d0c', hp: 40, dmg: 5, every: 1.6, pose: 'pose_if00' },
+    { id: 'pweza', name: 'PWEZA', title: 'Parallel Process Coordinator', col: '#e0408a', dark: '#3b1024', hp: 55, dmg: 6, every: 1.5, pose: 'pose_pweza' },
+    { id: 'tembo', name: 'TEMBO', title: 'Persistent World Memory', col: '#3c8dff', dark: '#14213d', hp: 80, dmg: 8, every: 1.9, pose: 'pose_tembo' },
+    { id: 'duma', name: 'DUMA', title: 'Latency Governor', col: '#ffc73a', dark: '#1a1408', hp: 45, dmg: 7, every: 1.2, pose: 'pose_duma' },
+    { id: 'buibui', name: 'BUIBUI', title: 'Dependency-Web Architect', col: '#38d6d0', dark: '#122a2c', hp: 50, dmg: 6, every: 1.4, pose: 'pose_buibui' },
+    { id: 'simba', name: 'SIMBA', title: 'World Orchestrator', col: '#d63a2a', dark: '#2a0f0b', hp: 70, dmg: 7, every: 1.5, pose: 'pose_simba' },
+    { id: 'fisi', name: 'FISI', title: 'Recycler and Scavenger', col: '#7cc24a', dark: '#23301a', hp: 60, dmg: 6, every: 1.5, pose: 'pose_fisi' },
   ];
   const SIKEE_DEF = { id: 'sikee', name: 'Sikee', title: 'Authority form', col: '#c9913a', dark: '#241a12', hp: 200, boss: true };
   const SIKEE_PHASES = [{ dmg: 6, every: 1.2 }, { dmg: 9, every: .9 }, { dmg: 12, every: .7 }];
@@ -251,10 +251,11 @@
     // Row 0 = idle/walk, row 1 = combat poses (shown while a strike lands).
     const bossPhase = w.boss && R.battle && R.battle.foe === w ? R.battle.phase : 1;
     const bossSet = w.boss ? SIKEE_SHEETS[bossPhase - 1] : null;
-    const img = bossSet ? sprite(bossSet.name) : (d.sprite ? sprite('s01_' + d.sprite) : null);
+    // Villains with a pose sheet: 4x3 atlas, row 0 = neutral/carve/jump/guard cycle.
+    const img = bossSet ? sprite(bossSet.name) : d.pose ? sprite(d.pose) : d.sprite ? sprite('s01_' + d.sprite) : null;
     if (img) {
       const row = bossSet && R.battle && R.battle.foe === w && R.battle.strike > 0 ? 1 : 0;
-      const cols = bossSet ? bossSet.cols : 5;
+      const cols = bossSet ? bossSet.cols : d.pose ? 4 : 5;
       const f = Math.floor(t * (row ? 12 : 6) + w.x) % cols;
       GM().cx.imageSmoothingEnabled = false;
       GM().cx.drawImage(img, f * 96, row * 96, 96, 96, -24, -36, 48, 48);
