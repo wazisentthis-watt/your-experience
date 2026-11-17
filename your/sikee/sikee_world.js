@@ -9,13 +9,13 @@
   const GM = () => window.WIR_GAME;
 
   const VILLAINS = [
-    { id: 'if00', name: 'IF-00', title: 'The First Condition', col: '#ff7d2a', dark: '#3a1d0c', hp: 40, dmg: 5, every: 1.6 },
-    { id: 'pweza', name: 'PWEZA', title: 'Parallel Process Coordinator', col: '#e0408a', dark: '#3b1024', hp: 55, dmg: 6, every: 1.5 },
+    { id: 'if00', name: 'IF-00', title: 'The First Condition', col: '#ff7d2a', dark: '#3a1d0c', hp: 40, dmg: 5, every: 1.6, sprite: 'rock_armadillo' },
+    { id: 'pweza', name: 'PWEZA', title: 'Parallel Process Coordinator', col: '#e0408a', dark: '#3b1024', hp: 55, dmg: 6, every: 1.5, sprite: 'bird' },
     { id: 'tembo', name: 'TEMBO', title: 'Persistent World Memory', col: '#3c8dff', dark: '#14213d', hp: 80, dmg: 8, every: 1.9 },
-    { id: 'duma', name: 'DUMA', title: 'Latency Governor', col: '#ffc73a', dark: '#1a1408', hp: 45, dmg: 7, every: 1.2 },
-    { id: 'buibui', name: 'BUIBUI', title: 'Dependency-Web Architect', col: '#38d6d0', dark: '#122a2c', hp: 50, dmg: 6, every: 1.4 },
+    { id: 'duma', name: 'DUMA', title: 'Latency Governor', col: '#ffc73a', dark: '#1a1408', hp: 45, dmg: 7, every: 1.2, sprite: 'hound' },
+    { id: 'buibui', name: 'BUIBUI', title: 'Dependency-Web Architect', col: '#38d6d0', dark: '#122a2c', hp: 50, dmg: 6, every: 1.4, sprite: 'frog' },
     { id: 'simba', name: 'SIMBA', title: 'World Orchestrator', col: '#d63a2a', dark: '#2a0f0b', hp: 70, dmg: 7, every: 1.5 },
-    { id: 'fisi', name: 'FISI', title: 'Recycler and Scavenger', col: '#7cc24a', dark: '#23301a', hp: 60, dmg: 6, every: 1.5 },
+    { id: 'fisi', name: 'FISI', title: 'Recycler and Scavenger', col: '#7cc24a', dark: '#23301a', hp: 60, dmg: 6, every: 1.5, sprite: 'moss_armadillo' },
   ];
   const SIKEE_DEF = { id: 'sikee', name: 'Sikee', title: 'Authority form', col: '#c9913a', dark: '#241a12', hp: 200, boss: true };
   const SIKEE_PHASES = [{ dmg: 6, every: 1.2 }, { dmg: 9, every: .9 }, { dmg: 12, every: .7 }];
@@ -235,10 +235,22 @@
   }
 
   // ---- drawing ----
+  // Sprite atlases: art/sikee/sheets/s01_<name>.png, 96px cells, rows = animations, cols = frames.
+  const SPR = {};
+  function sprite(name) {
+    if (!SPR[name]) { const i = new Image(); i.src = 'art/sikee/sheets/s01_' + name + '.png'; SPR[name] = i; }
+    return SPR[name].complete && SPR[name].naturalWidth ? SPR[name] : null;
+  }
   function drawFoe(w, t) {
     const d = w.def, sc = w.boss ? 1.6 : 1, X = w.x * GM().T, Y = w.y * GM().T + Math.sin(t * 6 + w.x) * 1.2;
     GM().cx.save(); GM().cx.translate(X, Y); GM().cx.scale(sc, sc);
     GM().cx.fillStyle = 'rgba(0,0,0,.3)'; GM().cx.beginPath(); GM().cx.ellipse(0, 10, 9, 4, 0, 0, 7); GM().cx.fill();
+    const img = d.sprite ? sprite(d.sprite) : null;
+    if (img) {
+      const f = Math.floor(t * 6 + w.x) % 5;
+      GM().cx.imageSmoothingEnabled = false;
+      GM().cx.drawImage(img, f * 96, 0, 96, 96, -24, -36, 48, 48);
+    } else {
     GM().cx.strokeStyle = d.col; GM().cx.lineWidth = 2;
     for (let i = 0; i < 7; i++) {
       const a = -Math.PI / 2 + (i - 3) * .28;
@@ -250,6 +262,7 @@
     GM().cx.fillStyle = d.col; GM().cx.beginPath(); GM().cx.arc(0, -12, 4, 0, 7); GM().cx.fill();
     GM().cx.fillStyle = '#fff'; GM().cx.fillRect(-3, -13, 2, 2); GM().cx.fillRect(1, -13, 2, 2);
     if (w.boss) { GM().cx.fillStyle = '#ffd166'; GM().cx.beginPath(); GM().cx.moveTo(-6, -20); GM().cx.lineTo(-3, -26); GM().cx.lineTo(0, -21); GM().cx.lineTo(3, -26); GM().cx.lineTo(6, -20); GM().cx.fill(); }
+    }
     GM().cx.restore();
     GM().cx.textAlign = 'center'; GM().cx.font = 'bold 9px sans-serif'; GM().cx.fillStyle = '#fff';
     GM().cx.fillText(d.name + (w.hold ? ' · holding' : ''), X, Y - 26 * sc);
@@ -266,9 +279,15 @@
   function drawPlants(t) {
     const stg = plantStage();
     const boxes = [[8.4, 4.4], [9.3, 4.4], [10.2, 4.4]];
+    const pimg = sprite('mounds_plants'); // row 4 of the mound sheet: five growth stages
     for (let i = 0; i < boxes.length; i++) {
       if (stg <= i) continue;
       const X = boxes[i][0] * GM().T, Y = boxes[i][1] * GM().T, h = 4 + stg * 3 + Math.sin(t * 2 + i) * .5;
+      if (pimg) {
+        GM().cx.imageSmoothingEnabled = false;
+        GM().cx.drawImage(pimg, Math.min(stg - 1, 4) * 96, 4 * 96, 96, 96, X - 19, Y - 34, 38, 38);
+        continue;
+      }
       GM().cx.strokeStyle = '#4fbf55'; GM().cx.lineWidth = 2; GM().cx.beginPath(); GM().cx.moveTo(X, Y); GM().cx.lineTo(X, Y - h); GM().cx.stroke();
       GM().cx.fillStyle = '#5fd06a'; GM().cx.beginPath(); GM().cx.ellipse(X - 4, Y - h * .6, 4, 2, -.5, 0, 7); GM().cx.fill();
       GM().cx.beginPath(); GM().cx.ellipse(X + 4, Y - h * .8, 4, 2, .5, 0, 7); GM().cx.fill();
