@@ -27,6 +27,9 @@
   const CRIME_MIN = 18, CRIME_MAX = 28, ESCAPE_MS = 5 * 60 * 1000;
   // Wrecks stay until repaired (stand next to one and hold G for REPAIR_S). Unrepaired wrecks spread every GROW_MS.
   const REPAIR_S = 3, GROW_MS = 10 * 60 * 1000, WRECK_CAP = 40;
+  // Lingering effects: standing within WRECK_NEAR tiles of a wreck slows you to WRECK_SLOW of normal speed;
+  // every UPKEEP_S seconds the city bills $UPKEEP_FEE per unrepaired wreck (real time, see note in PR).
+  const WRECK_NEAR = 0.8, WRECK_SLOW = 0.55, UPKEEP_S = 60, UPKEEP_FEE = 5;
 
   const R = { wanderers: [], battle: null, dist: 0, cool: 0, lastX: undefined, lastY: undefined, lastMap: null,
     hp: HOME_HP, mella: false, hud: null, rolled: 0 };
@@ -111,6 +114,27 @@
         GM().save();
       }
     }
+  }
+  // Called by the main game's movePlayer(): slows the player near wrecks on the current map.
+  function wreckSlow() {
+    const s = st(), m = GM().G && GM().G.map; if (!s || !m || !s.wrecks.length) return 1;
+    for (const k of s.wrecks) {
+      if (k.map !== m.id) continue;
+      if (Math.hypot(k.x + .5 - GM().G.px, k.y + .5 - GM().G.py) < WRECK_NEAR) return WRECK_SLOW;
+    }
+    return 1;
+  }
+  function tickUpkeep(dt) {
+    const s = st(), S = GM().S; if (!s || !S) return;
+    R.upkeepT = (R.upkeepT || 0) + dt;
+    if (R.upkeepT < UPKEEP_S) return;
+    R.upkeepT = 0;
+    const n = s.wrecks.length; if (!n) return;
+    const fee = Math.min(S.money, UPKEEP_FEE * n);
+    if (fee <= 0) return;
+    S.money -= fee;
+    GM().toast('City cleanup fee: -$' + fee + ' for ' + n + ' unrepaired wreck' + (n > 1 ? 's' : '') + '.', 'bad');
+    GM().save();
   }
   function startRepair() {
     const s = st(), m = GM().G.map; if (!s || !m || R.battle) return;
@@ -240,6 +264,7 @@
     if (s.kawTrip && now >= s.kawTrip.until) finishKaw(s);
     growWrecks(now);
     tickRepair(dt);
+    tickUpkeep(dt);
 
     if (R.battle) { battleTick(dt); return; }
 
@@ -486,6 +511,7 @@
   window.SIKEE = {
     tick, enterMap: onEnterMap, drawList,
     blocking: () => !!R.battle,
-    debug: { R, st, plantStage, spawnRoadVillain, spawnSikeeOnRoad, startBattle, commitCrime, wreckCount, startRepair },
+    wreckSlow,
+    debug: { R, st, plantStage, spawnRoadVillain, spawnSikeeOnRoad, startBattle, commitCrime, wreckCount, startRepair, tickUpkeep },
   };
 })();
