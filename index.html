@@ -3410,12 +3410,12 @@ function buildHomeV2() {
     F('stove', 'stove', 15, 2, 2, 2, 30, { name: 'Stove', sub: 'Home-cooked meals lower inflammation', acts: ['cook', 'harvest'] }),
     F('coffee', 'espresso', 17, 2, 1, 1, 14, { name: 'Espresso', sub: 'A small lift', acts: ['coffee'] }),
     F('tv', 'flat_tv', 16, 6, 2, 2, 32, { name: 'TV & the feed', sub: 'Fun. It also ionizes you.', acts: ['scroll'] }),
-    F('sofa', 'sofa', 12, 8, 3, 2, 50, { name: 'Sofa', sub: 'Scroll or nap', acts: ['scroll', 'nap'] }),
+    F('sofa', 'sofa', 12, 8, 3, 2, 50, { name: 'Sofa', sub: 'Scroll or nap', acts: ['scroll', 'nap'], use: [15.5, 9.5] }),   // was [13.5,10.5]: inside the fireplace
     F('console', 'game_console', 16, 9, 2, 1, 24, { name: 'Game console', sub: 'The arcade and every WIR game', acts: ['arcade'] }),
     F('aquarium', 'aquarium', 17, 4, 1, 1, 18, { decor: 1, name: 'Aquarium', tier: ['loft', 'house'] }),
     F('fire', 'fireplace', 13, 10, 2, 1, 30, { decor: 1, name: 'Fireplace', tier: ['house'] }),
     { id: 'garden', name: 'Garden boxes', sub: 'Carrots in the Cosmos seeds · water daily · harvest after 3 waterings', x: 15, y: 11, w: 3, h: 1, garden: 1, draw: 'garden' },
-    { id: 'door', name: 'Front door', sub: 'Out to Savannah', x: 9, y: 12, w: 2, h: 1, exit: 'SAV', draw: 'door', use: [10, 11.5], walk: 1 },
+    { id: 'door', name: 'Front door', sub: 'Out to Savannah', x: 9, y: 12, w: 2, h: 1, exit: 'SAV', draw: 'door', use: [9.5, 11.5], walk: 1 },   // was [10,11.5]: inside the divider wall
   );
   for (const o of m.objs) if (!o.use && o.draw === 'fur') o.use = [o.x + o.w / 2, o.y + o.h + .5];
   m.spawn = [11.5, 10.5];   // kitchen side of the divider (x=10 is wall); was [10,10.5], inside the wall
