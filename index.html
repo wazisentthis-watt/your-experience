@@ -2084,7 +2084,7 @@ function roadExit() {
   const i = ROAD_ORDER.indexOf(m.id), to = ROAD_ORDER[i + dir];
   G.px = dir < 0 ? 1.3 : m.w - 1.3; // step back inside so the exit does not fire twice
   if (!to) { if (!G.roadNoT || Date.now() - G.roadNoT > 3000) { G.roadNoT = Date.now(); toast('Nothing out that way yet.', 'dim'); } return; }
-  ride(to, !!(S.car && !S.car.broken));
+  ride(to, !!(S.car && !S.car.broken), null, dir);
 }
 // Driving / riding scene shown during a trip between cities: a scrolling road or rail line, a vehicle, and a progress bar.
 function ensureDriveUI() {
@@ -2116,7 +2116,7 @@ function showDrive(title, sub, ms, mode) {
   el.classList.add('on');
 }
 function hideDrive() { const el = document.getElementById('drive'); if (el) el.classList.remove('on'); }
-function ride(to, drive, cb) {
+function ride(to, drive, cb, entry) {
   const rc0 = M.rideCost(S.city, to), rc = drive ? { c: Math.round(rc0.c * .4), h: Math.round(rc0.h * 1.3 * 2) / 2 } : rc0; if (S.money < rc.c) return toast('Need $' + rc.c, 'bad');
   if (drive) G.ride = 'car';
   closeSheet(); S.money -= rc.c; G.fade = true;
@@ -2126,7 +2126,9 @@ function ride(to, drive, cb) {
   setTimeout(() => {
     for (let i = 0; i < rc.h * 4; i++) M.step(S, .25, hooks);
     const first = !S.visited[to];
-    enterMap(to, MAPS[to].spawn);
+    // arriving by road: come in at the edge you drove in from (entry 1 = from the west, -1 = from the east)
+    const arrive = entry && MAPS[to] ? [entry > 0 ? 1.6 : MAPS[to].w - 1.6, (ROAD_Y[0] + ROAD_Y[1]) / 2] : MAPS[to].spawn;
+    enterMap(to, arrive);
     if (S.slots.Explore !== undefined) S.slots.Explore = Math.min(1, S.slots.Explore + .4);
     S.slots.Play = Math.min(1, S.slots.Play + .12);
     hideDrive(); G.fade = false;
