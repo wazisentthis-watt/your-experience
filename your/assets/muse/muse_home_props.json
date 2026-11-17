@@ -1,0 +1,74 @@
+{
+ "sheet": "muse_home_props.png",
+ "cell": 192,
+ "cells": {
+  "fridge": {
+   "index": 0,
+   "x": 0,
+   "raw_bbox": [
+    138,
+    86,
+    982,
+    2153
+   ],
+   "raw_size": [
+    1120,
+    2240
+   ],
+   "cell_draw_w": 78,
+   "cell_draw_h": 192,
+   "scale": 0.0929
+  },
+  "bed": {
+   "index": 1,
+   "x": 192,
+   "raw_bbox": [
+    70,
+    91,
+    1514,
+    1518
+   ],
+   "raw_size": [
+    1600,
+    1600
+   ],
+   "cell_draw_w": 192,
+   "cell_draw_h": 190,
+   "scale": 0.133
+  },
+  "water": {
+   "index": 2,
+   "x": 384,
+   "raw_bbox": [
+    72,
+    241,
+    1494,
+    1493
+   ],
+   "raw_size": [
+    1600,
+    1600
+   ],
+   "cell_draw_w": 192,
+   "cell_draw_h": 169,
+   "scale": 0.135
+  },
+  "home": {
+   "index": 3,
+   "x": 576,
+   "raw_bbox": [
+    101,
+    80,
+    1500,
+    1524
+   ],
+   "raw_size": [
+    1600,
+    1600
+   ],
+   "cell_draw_w": 186,
+   "cell_draw_h": 192,
+   "scale": 0.133
+  }
+ }
+}
