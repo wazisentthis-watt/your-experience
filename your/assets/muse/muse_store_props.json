@@ -1,0 +1,74 @@
+{
+ "sheet": "muse_store_props.png",
+ "cell": 192,
+ "cells": {
+  "exterior": {
+   "index": 0,
+   "x": 0,
+   "raw_bbox": [
+    192,
+    146,
+    1727,
+    1154
+   ],
+   "raw_size": [
+    1920,
+    1280
+   ],
+   "cell_draw_w": 192,
+   "cell_draw_h": 126,
+   "scale": 0.1251
+  },
+  "shelf": {
+   "index": 1,
+   "x": 192,
+   "raw_bbox": [
+    409,
+    172,
+    1494,
+    1120
+   ],
+   "raw_size": [
+    1920,
+    1280
+   ],
+   "cell_draw_w": 192,
+   "cell_draw_h": 168,
+   "scale": 0.177
+  },
+  "fridge": {
+   "index": 2,
+   "x": 384,
+   "raw_bbox": [
+    148,
+    175,
+    972,
+    2072
+   ],
+   "raw_size": [
+    1120,
+    2240
+   ],
+   "cell_draw_w": 83,
+   "cell_draw_h": 192,
+   "scale": 0.1012
+  },
+  "counter": {
+   "index": 3,
+   "x": 576,
+   "raw_bbox": [
+    356,
+    347,
+    1564,
+    998
+   ],
+   "raw_size": [
+    1920,
+    1280
+   ],
+   "cell_draw_w": 192,
+   "cell_draw_h": 103,
+   "scale": 0.1589
+  }
+ }
+}

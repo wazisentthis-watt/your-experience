@@ -206,3 +206,119 @@ sprite cells pasted at their real tiles, bottom-anchored): workspace
 - **v24's `couch`/`walk` gaps are reported, not fixed** (see §5).
 - PR #2 (v2.4 follow-up) is recorded as draft/HOLD in `your/v24/README.md`
   but GitHub shows it **merged** — that README is stale; not changed here.
+
+## 9. Relay 009 — Priority 1: finish MELLA's home (2026-11-16)
+
+- **Home exterior wired.** The SAV `home` building (NW1, 5×6) now draws
+  the sheet's home cell (cell 3) via a `drawObj` wrap in
+  `your_muse.js` (`drawMuseBuilding`): sprite stretched to the
+  building's `bldgSprite` canvas (160×224 px; cell aspect 0.969 vs
+  canvas 0.714, ~17% vertical stretch — a future cell re-render at
+  0.714 aspect would remove it). The same ground shadow is drawn.
+  When the sheet is not loaded, the procedural `bldgSprite` runs
+  instead — the building is never invisible. Position, size, enter
+  behaviour, collisions and save data unchanged. The sprite's own
+  glowing windows carry the night look, so the procedural night-glow
+  rectangles are skipped in sprite mode; the sign plate is also
+  skipped (the name still shows in the interaction sheet).
+- **Roar Well reachability verified** (Node BFS, not a live walk):
+  from the HOME spawn to a Roar Well use spot, over the real block
+  array, without crossing the water tile. Note the spawn quirk the
+  BFS exposed: spawn [10,10.5] floors to tile (10,10), which is a
+  divider-wall tile in the block array; the live game tolerates it
+  only because fractional walk checks are bounds-only (the v24
+  finding in §5). Tap-to-walk (`findPath`) from the exact spawn
+  would return null until the player steps off with direct movement
+  — worth a live check, not fixed here (it is live-game behaviour,
+  not this module's).
+- **Sofa rest affordance verified present** in `affordances('HOME')`
+  (already implemented in Relay 005; no re-implementation).
+  Fridge/bed keep their existing acts. **Drink values unchanged:
+  Fuel +0.06 / Clean +0.08 (PROVISIONAL).**
+- **Fractional-coordinate fix: NOT applied to v24.** Coordination
+  only — the one-line `sofa: 'rest'` proposal and the flooring
+  suggestion stay in §5 for Claude. No file under `your/v24/` (or
+  `your/v22/`) was touched.
+- Tests: 16/16 (was 12/12; +4 P1 tests).
+
+## 10. Relay 009 — Priority 2: corner store (2026-11-16)
+
+**Economy — read first, then designed (index.html:535, :904–905, :1377):**
+`M.ITEMS` is the existing catalog (incl. `snack: 'Corner store hot
+chips', $4` — the corner store already exists as a concept).
+`M.buy(S, id)` deducts `withTax` (5% base city sales tax, less with
+`taxCut`), calls `spend`, and applies per-item effects (groceries
++5 meals, mealprep Fuel +.45, pie/snack Fuel +.15 Play +.08, berry
+Fuel/Rest +.18, roar lifts element slots to ≥.3, donut Fuel +.3
+Play +.35). `openShop(o)` renders `o.shop` item ids through that
+path; `SPECIAL.market` is the Shop button; `openObj` shows it for
+any object with acts `['market']`. **No second economy or inventory
+was invented.** The store's shop objects carry `acts: ['market']` +
+`shop: [...]` and the live `openShop`/`M.buy`/`S.money` path does
+the buying. The purchase test mirrors `M.buy`'s rules for the
+stocked items only; the live shop path itself is NOT verified here
+(no browser).
+
+**Art:** `your/assets/muse/muse_store_props.png` — 768×192, 4 cells
+of 192×192 (exterior, shelf, fridge, counter — the counter cell
+includes the register on top), same palette/conventions as the home
+sheet. Manifest `muse_store_props.json`; embedded base64 fallback
+`your/muse/muse_store_props_data.js` (byte-identical to the PNG,
+verified in tests). The home sheet was **not** reordered or modified.
+Raws preserved in the workspace under `work/muse_store_assets_raw/`.
+
+| Cell | Prop | Cell draw | In-game draw |
+|---|---|---|---|
+| 0 | Exterior — purple awning, cream walls, teal windows, blank gold sign, plants, fruit crate | 192×126 | 224×160 on the 7×4 building canvas (~9% differential stretch) |
+| 1 | Shelf — dark wood, jars, bread, fruit | 192×168 | 120 px wide, ~105 px tall |
+| 2 | Fridge — purple glass-door fridge, blue/teal/gold bottles, gold star | 83×192 | 40 px wide, ~93 px tall |
+| 3 | Counter — wood counter, purple front, gold/teal register, fruit basket | 192×103 | 140 px wide, ~75 px tall |
+
+**SAV building:** `muse_store` ("Corner Store", Sahelatrix, brick,
+gold awning) at the BK2 row, **widened to 7×4** (x8, y1) so the wide
+storefront cell fits its canvas. Three trees the widened footprint
+covers are cleared (tile 6 → 0) and the footprint is blocked. Door
+[11,4], use [11.5,5.5]. Enter `STORE`.
+
+**Interior map `MAPS.STORE` (20×13, like HOME):** plaza floor
+(tile 7) + sidewalk border (tile 3) with a door gap at x9–10;
+spawn [10,10.5] — the same as HOME, because the live `openObj`
+enter branch always passes `MAPS.HOME.spawn`. Objects: counter
+(3,2,5×1, shop: groceries/mealprep/pie/donut), cold-drinks fridge
+(15,2,2×2, shop: roar/snack/mealprep), snack shelf (3,5,4×1,
+shop: snack/pie), grocery shelf (3,9,4×1, shop: groceries/berry),
+dry-goods shelf (12,6,4×1, display only, no shop), front door
+(9,12, exit SAV). All fixtures block their footprints; aisles are
+walkable (BFS-verified from spawn to every shop use spot). The
+grocery shelf was moved y8 → y9 after the placement preview showed
+the tall shelf sprites overlapping. KAW affordances: food at
+counter/fridge/shelf1/shelf2, water at the fridge (both `kind:
+'shop'` — buy, don't stand-in); the display shelf is not an
+affordance. `window.YOUR_MUSE.objects('STORE')` /
+`affordances('STORE')` expose them in the existing contract shape.
+
+**Known limitations (P2, not fixed here):**
+- **STORE floor/walls bake as plaza/sidewalk, not wood/walls.**
+  `bakeGround()` has no case for tiles 1/4/5 (they bake as grass),
+  and only `drawHomeFloor` (HOME-only) draws a real interior. The
+  border reads as a paved edge and is functionally blocked, but the
+  room has no visible walls. A proper interior floor needs an
+  `index.html` hook — deliberately NOT done (index.html stays at
+  its +1 line).
+- **Cars spawn off-map, peds spawn inside.** `enterMap` calls
+  `spawnCars()` for any non-HOME map; on a 20×13 map the car lanes
+  (y14–16, x21–22) are outside the map, so they never show — but
+  only because of the map size. `outdoors()` is id-based
+  (`!== 'HOME'`), so `spawnPeds()` places 9 wandering shoppers
+  inside the store. Harmless, arguably charming, but not designed.
+- **No live verification.** The enter flow (building → STORE →
+  shop → buy → door → SAV), the shop sheet rendering, and the
+  `M.buy` call inside `openShop` are code-read, not run. Node tests
+  verify the map, the art calls, the affordances, and the purchase
+  math on a mirror of `M.buy` — not the live path.
+- **Second milestone (home → store → home walk) is NOT verified
+  live.** Same reason: no browser here.
+- Tests: 27/27 (was 16/16; +11 P2 tests). `node --check` clean on
+  `your_muse.js` and both data files. `index.html` diff is still
+  exactly +1 line (the Relay 005 script tag).
+
