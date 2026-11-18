@@ -33,7 +33,7 @@ function paint(){
  if(list)list.forEach((_,i)=>{const dot=document.createElement('i');if(i<=step)dot.className='active';steps.append(dot)})
 }
 function show(nextView){view=nextView;step=0;api.pause();scene.hidden=false;paint();nextButton.focus()}
-function play(){api.resume();scene.hidden=true;document.querySelector('#game').focus({preventScroll:true})}
+function play(){api.resume();api.chime?.();scene.hidden=true;document.querySelector('#game').focus({preventScroll:true})}
 function advance(){
  const state=api.snapshot();
  if(view==='title'){if(state.done)api.reset();if(state.fragments.length&&!state.done){play();return}show('intro');return}
