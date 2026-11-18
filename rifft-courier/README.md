@@ -30,3 +30,13 @@ A GitHub connector readback compared the three proposed public files byte-for-by
 
 ## Rollback
 Revert the public PR after merge or remove the `rifft-courier/` directory. The existing Y.O.U.R. game source remains untouched.
+
+## Soundscape upgrade (2026-11-18)
+
+- Original in-browser WebAudio instruments and noise, with **three district-specific looping arrangements**. No prerecorded audio files or third-party samples.
+- Stronger, layered cues for elemental casting, enemy hits, fragments, dash, portals, power switching, mission start and victory.
+- **VOL 0–100 slider and Sound toggle** in the HUD. Volume and mute preferences persist locally on this device. Default level is 78%, with a dynamics compressor to reduce clipping. Start the game with a button/gesture to unlock sound on mobile.
+- Music pauses with the game, stops when the page is hidden, and returns on resume; muting and zero volume stop its timer.
+- Sound is experimental and has not yet been heard or checked on a physical iPhone or Bluetooth headset. Players should begin at a comfortable device volume.
+
+**Sound files:** `audio.js` is now a fourth runnable game file, alongside `index.html`, `experience.js`, and `experience.css`. The game release folder now contains those four runtime files plus this README.
