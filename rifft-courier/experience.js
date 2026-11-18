@@ -18,7 +18,7 @@ const crossings=[
 ['ROOTS BEHIND THE RAIN','WishBorn is listening. Its living garden remembers routes that maps have forgotten. Gather two more fragments.'],
 ['THE FIELD IS CHARGED','The Gridiron has become an ion field. Two final fragments remain in a stadium where the sky will not sit still.']
 ];
-let view='title',step=0,previousConfirm=false;
+let view='title',step=0,previousConfirm=false,previousStart=false,previousSkip=false;
 function paint(){
  const status=api.snapshot();let item,header='PHATOM • RIFFT COURIER',advance='Continue',back=false,skip=false,list=null;
  if(view==='title'){item=['RIFFT COURIER','Silver rain over Morrow City. Six unstable fragments. Three connected WIR districts. One courier who can keep their stories from collapsing.'];advance=status.done?'New Run':status.fragments.length?'Continue Saved Run':'Accept Contract'}
@@ -53,7 +53,7 @@ document.querySelector('#log').setAttribute('role','status');document.querySelec
 window.addEventListener('rifft-zone',()=>show('crossing'));
 window.addEventListener('rifft-victory',()=>show('victory'));
 window.addEventListener('keydown',e=>{if(e.key!=='Escape'&&e.key.toLowerCase()!=='p')return;e.preventDefault();if(e.repeat)return;if(api.active)show('pause');else if(view==='pause')play()});
-function menuGamepad(){const pads=navigator.getGamepads?.()||[];const p=Array.from(pads).find(Boolean);const confirm=!!(p?.buttons?.[9]?.pressed||p?.buttons?.[0]?.pressed);if(!scene.hidden&&confirm&&!previousConfirm)advance();previousConfirm=confirm;requestAnimationFrame(menuGamepad)}
+function menuGamepad(){const pads=navigator.getGamepads?.()||[];const p=Array.from(pads).find(Boolean);const start=!!p?.buttons?.[9]?.pressed,confirm=!!p?.buttons?.[0]?.pressed,skip=!!p?.buttons?.[1]?.pressed;if(scene.hidden){if(start&&!previousStart)show('pause')}else{if((start||confirm)&&!previousConfirm)advance();if(skip&&!previousSkip&&(view==='intro'||view==='tutorial'))play()}previousConfirm=start||confirm;previousStart=start;previousSkip=skip;requestAnimationFrame(menuGamepad)}
 requestAnimationFrame(menuGamepad);
 show(api.snapshot().done?'victory':'title');
 })();
