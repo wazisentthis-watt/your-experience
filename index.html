@@ -1841,6 +1841,7 @@ function enterMap(id, at) {
   spawnRival();
   placeNpcs(true); spawnPeds(); spawnCars(); updateRideBtn(); mpEnter(id);
   if (window.SIKEE) SIKEE.enterMap(id);
+  wmCall('enterMap', id);
 }
 // a player from your next opponent is out in the city. Your aura decides who backs down.
 function spawnRival() {
@@ -3097,6 +3098,7 @@ function render(t) {
   for (const n of G.npcs.concat(G.peds)) if (n.vis) draws.push({ y: n.y + .2, f: () => drawPerson(n, t) });
   for (const q of G.peers || []) if (q.map === m.id) draws.push({ y: q.y + .2, f: () => drawPeer(q, t) });
   if (window.SIKEE) for (const d of SIKEE.drawList(m, t)) draws.push(d);
+  for (const l of wmCall('drawList', m, t)) if (Array.isArray(l)) for (const d of l) draws.push(d);
   if (m.id === 'HOME') draws.push({ y: G.dog.y + .1, f: () => drawDog(G.dog.x, G.dog.y, t) });
   draws.push({ y: G.py + .24, f: () => drawPlayerBackElectrons(t) }); draws.push({ y: G.py + .25, f: () => drawPlayer(t) });
   draws.sort((a, b) => a.y - b.y).forEach(d => d.f());
@@ -3607,6 +3609,7 @@ addEventListener('keydown', e => {
   if (MG.cur) return;
   if (!S || $('#start').hidden === false) return;
   if (window.SIKEE && SIKEE.blocking()) return;
+  if (wmCall('blocking').some(Boolean)) return;
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
   const k = e.key.toLowerCase();
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) { if (G.sheet || G.phone) return; G.keys[k] = 1; G.path = []; G.go = null; e.preventDefault(); }
@@ -3700,8 +3703,11 @@ $('#labEnd').onclick = () => {
 window.WIR_GAME = { get S() { return S; }, get G() { return G; }, get cx() { return cx; }, get T() { return T; }, get MG() { return MG; },
   walkable: (...a) => walkable(...a), toast: (...a) => toast(...a), save: () => save(), enterMap: (...a) => enterMap(...a) };
 
+/* ---- world-module slot (additive; Sikee above is unchanged). Modules push {id, tick, enterMap, drawList, blocking, wreckSlow} onto
+   window.WIR_WORLD_MODULES; a hook that throws is reported once and switched off. Contract: your/world/README.md ---- */
+function wmCall(name, ...a) { const out = []; for (const w of (Array.isArray(window.WIR_WORLD_MODULES) ? window.WIR_WORLD_MODULES : [])) if (w && typeof w[name] === 'function') { try { out.push(w[name](...a)); } catch (e) { console.error('world module ' + (w.id || '?') + '.' + name + ' failed; hook switched off', e); w[name] = null; } } return out; }
 /* ---- the loop ---- */
-function paused() { return !S || G.sheet || G.phone || G.fade || G.fb || G.lab || MG.cur || !$('#start').hidden || !!(window.SIKEE && SIKEE.blocking()); }
+function paused() { return !S || G.sheet || G.phone || G.fade || G.fb || G.lab || MG.cur || !$('#start').hidden || !!(window.SIKEE && SIKEE.blocking()) || wmCall('blocking').some(Boolean); }
 let goalsSeen = {};
 function frame(ts) {
   const dt = Math.min(.05, (ts - (G.last || ts)) / 1000); G.last = ts;
@@ -3719,6 +3725,7 @@ function frame(ts) {
     G.mpT = (G.mpT || 0) + dt; if (G.mpT > 20) { G.mpT = 0; mpScore(); mpTaxes(); }
   }
   if (S && window.SIKEE) SIKEE.tick(dt);
+  if (S) wmCall('tick', dt);
   if (S) mpTick(dt);
   render(ts / 1000);
   requestAnimationFrame(frame);
@@ -3729,7 +3736,7 @@ function dirOf(dx, dy) { return Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' :
 function outdoors() { return G.map && G.map.id !== 'HOME'; }
 function rideMul() { return !outdoors() ? 1 : G.ride === 'car' ? 2.6 : G.ride === 'board' ? 1.7 : 1; }
 function movePlayer(dt) {
-  const sp = speedNow() * rideMul() * dt * (G.rush ? 2.6 : 1) * (window.SIKEE && SIKEE.wreckSlow ? SIKEE.wreckSlow() : 1);
+  const sp = speedNow() * rideMul() * dt * (G.rush ? 2.6 : 1) * (window.SIKEE && SIKEE.wreckSlow ? SIKEE.wreckSlow() : 1) * wmCall('wreckSlow').reduce((a, v) => a * (v > 0 ? v : 1), 1);
   let kx = (G.keys.arrowright || G.keys.d ? 1 : 0) - (G.keys.arrowleft || G.keys.a ? 1 : 0), ky = (G.keys.arrowdown || G.keys.s ? 1 : 0) - (G.keys.arrowup || G.keys.w ? 1 : 0);
   if (G.pad && (G.pad.ax || G.pad.ay)) { kx = G.pad.ax; ky = G.pad.ay; G.path = []; G.go = null; }
   G.moving = false;
