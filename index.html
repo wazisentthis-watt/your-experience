@@ -1428,6 +1428,12 @@ document.documentElement.style.setProperty('--food',"url('data:image/png;base64,
 <script src="your/v24/your_v24.js"></script>
 <script src="your/art/your_kaw_art.js"></script>
 <script src="your/sikee/sikee_world.js"></script>
+<script src="your/wishborn/wishborn_species.js"></script>
+<script src="your/passport/wir_mella_passport.js"></script>
+<script src="your/passport/wir_world_rules.js"></script>
+<script src="your/wishborn/wishborn_world.js"></script>
+<script src="your/wishborn/wishborn_passport.js"></script>
+<script src="your/modules/your_nimbus.js"></script>
 <script src="your/muse/your_muse.js"></script>
 <script src="your/integration/section_handoff.js"></script>
 <script src="your/living/vendor/cce_config.js"></script>
@@ -1850,6 +1856,7 @@ function enterMap(id, at) {
   spawnRival();
   placeNpcs(true); spawnPeds(); spawnCars(); updateRideBtn(); mpEnter(id);
   if (window.SIKEE) SIKEE.enterMap(id);
+  if (window.WISHBORN) WISHBORN.enterMap(id);
   wmCall('enterMap', id);
 }
 // a player from your next opponent is out in the city. Your aura decides who backs down.
@@ -3107,6 +3114,7 @@ function render(t) {
   for (const n of G.npcs.concat(G.peds)) if (n.vis) draws.push({ y: n.y + .2, f: () => drawPerson(n, t) });
   for (const q of G.peers || []) if (q.map === m.id) draws.push({ y: q.y + .2, f: () => drawPeer(q, t) });
   if (window.SIKEE) for (const d of SIKEE.drawList(m, t)) draws.push(d);
+  if (window.WISHBORN) for (const d of WISHBORN.drawList(m, t)) draws.push(d);
   for (const l of wmCall('drawList', m, t)) if (Array.isArray(l)) for (const d of l) draws.push(d);
   if (m.id === 'HOME') draws.push({ y: G.dog.y + .1, f: () => drawDog(G.dog.x, G.dog.y, t) });
   draws.push({ y: G.py + .24, f: () => drawPlayerBackElectrons(t) }); draws.push({ y: G.py + .25, f: () => drawPlayer(t) });
@@ -3628,12 +3636,18 @@ addEventListener('keydown', e => {
   if (k === 'r' && !G.sheet && !G.phone && !G.fb) cycleRide();
 });
 addEventListener('keyup', e => { G.keys[e.key.toLowerCase()] = 0; });
-function interactNear() {
-  if (S.busy) return;
+function nearestUse() {
+  if (!S || S.busy) return null;
   let best = null, bd = 1.6;
   for (const n of G.npcs) if (n.vis) { const d = Math.hypot(n.x - G.px, n.y - G.py); if (d < bd) { bd = d; best = () => openNpc(n); } }
   for (const o of G.map.objs) { if (o.decor || !furnOn(o)) continue; const u = useSpot(o); if (!u) continue; const d = Math.hypot(u[0] - G.px, u[1] - G.py); if (d < bd) { bd = d; best = () => { G.curBldg = o; openObj(o); }; } }
   if (G.map.id === 'HOME') { const d = Math.hypot(G.dog.x - G.px, G.dog.y - G.py); if (d < bd) best = openDog; }
+  if (window.WISHBORN) { const wu = WISHBORN.use(); if (wu) best = wu; }
+  return best;
+}
+function interactNear() {
+  if (S.busy) return;
+  const best = nearestUse();
   if (best) best(); else toast('Nothing close enough. Walk up to something.');
 }
 $('#busyStop').onclick = stopBusy;
@@ -3709,7 +3723,7 @@ $('#labEnd').onclick = () => {
 };
 
 /* bridge for your/sikee/sikee_world.js: reads game state at call time */
-window.WIR_GAME = { get S() { return S; }, get G() { return G; }, get cx() { return cx; }, get T() { return T; }, get MG() { return MG; },
+window.WIR_GAME = { nearestUse: () => nearestUse(), get S() { return S; }, get G() { return G; }, get cx() { return cx; }, get T() { return T; }, get MG() { return MG; },
   walkable: (...a) => walkable(...a), toast: (...a) => toast(...a), save: () => save(), enterMap: (...a) => enterMap(...a) };
 
 /* ---- world-module slot (additive; Sikee above is unchanged). Modules push {id, tick, enterMap, drawList, blocking, wreckSlow} onto
@@ -3734,6 +3748,7 @@ function frame(ts) {
     G.mpT = (G.mpT || 0) + dt; if (G.mpT > 20) { G.mpT = 0; mpScore(); mpTaxes(); }
   }
   if (S && window.SIKEE) SIKEE.tick(dt);
+  if (S && window.WISHBORN) WISHBORN.tick(dt);
   if (S) wmCall('tick', dt);
   if (S) mpTick(dt);
   render(ts / 1000);

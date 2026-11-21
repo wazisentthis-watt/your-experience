@@ -382,7 +382,7 @@
     const b = R.battle; if (!b) return; const g = GM().G, p = R.p, f = b.foe;
     if (p.dodgeCd > 0 || p.dodgeT > 0 || R.stop > 0) return;
     const K = g.keys || {}, kx = (K.arrowright || K.d ? 1 : 0) - (K.arrowleft || K.a ? 1 : 0), ky = (K.arrowdown || K.s ? 1 : 0) - (K.arrowup || K.w ? 1 : 0);
-    let dx = kx, dy = ky;
+    const pd = g.pad || {}; let dx = kx || (Math.abs(pd.ax) > .3 ? Math.sign(pd.ax) : 0), dy = ky || (Math.abs(pd.ay) > .3 ? Math.sign(pd.ay) : 0);
     if (!dx && !dy) { dx = g.px - f.x; dy = g.py - f.y; }   // no input: back away from the foe
     const l = Math.hypot(dx, dy) || 1; p.dx = dx / l; p.dy = dy / l;
     p.dodgeT = DODGE_T; p.dodgeCd = DODGE_CD; p.inv = Math.max(p.inv, .32);
@@ -778,6 +778,12 @@
     tick, enterMap: onEnterMap, drawList,
     blocking: () => false,   // the fight runs in the world: movement and the clock keep going
     fighting: () => !!R.battle,
+    // controller entry point: aim is an optional unit vector (right stick); the fight rules stay in strike/blast/dodge/run
+    act(name, ax, ay) {
+      if (!R.battle) return false;
+      if ((ax || ay) && R.p) { const l = Math.hypot(ax, ay) || 1; R.p.fx = ax / l; R.p.fy = ay / l; }
+      ({ strike, blast, dodge, run })[name]?.(); return true;
+    },
     wreckSlow,
     debug: { R, st, dodge, plantStage, spawnRoadVillain, spawnSikeeOnRoad, startBattle, homeIntruder, strike, blast, commitCrime, wreckCount, startRepair, tickUpkeep },
   };
