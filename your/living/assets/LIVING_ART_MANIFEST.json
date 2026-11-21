@@ -1,0 +1,327 @@
+{
+ "source": "Y.O.U.R. Map Art Pack (MAP_ART_PACK.json, created 2026-11-21 12:52 PM ET): cells cut from ChatGPT sheets 57-68; converted to webp for root (PROPOSED art, drawn, no photos)",
+ "files": {
+  "buildings/LD-13_first_ledger_bank.webp": {
+   "from": "cut/living/buildings/LD-13_first_ledger_bank.png",
+   "size": [
+    488,
+    469
+   ]
+  },
+  "buildings/LD-14_ledger_offices.webp": {
+   "from": "cut/living/buildings/LD-14_ledger_offices.png",
+   "size": [
+    463,
+    469
+   ]
+  },
+  "buildings/LD-15_substation_4.webp": {
+   "from": "cut/living/buildings/LD-15_substation_4.png",
+   "size": [
+    489,
+    458
+   ]
+  },
+  "buildings/LD-16_hollis_flats.webp": {
+   "from": "cut/living/buildings/LD-16_hollis_flats.png",
+   "size": [
+    487,
+    460
+   ]
+  },
+  "buildings/LD-17_corner_market.webp": {
+   "from": "cut/living/buildings/LD-17_corner_market.png",
+   "size": [
+    496,
+    450
+   ]
+  },
+  "buildings/LD-18_steamline_cafe.webp": {
+   "from": "cut/living/buildings/LD-18_steamline_cafe.png",
+   "size": [
+    492,
+    466
+   ]
+  },
+  "buildings/LD-19_tinker_workshop.webp": {
+   "from": "cut/living/buildings/LD-19_tinker_workshop.png",
+   "size": [
+    493,
+    452
+   ]
+  },
+  "buildings/LD-20_ninefold_apartments.webp": {
+   "from": "cut/living/buildings/LD-20_ninefold_apartments.png",
+   "size": [
+    397,
+    496
+   ]
+  },
+  "buildings/LD-21_old_foundry.webp": {
+   "from": "cut/living/buildings/LD-21_old_foundry.png",
+   "size": [
+    493,
+    483
+   ]
+  },
+  "buildings/LD-22_transit_depot.webp": {
+   "from": "cut/living/buildings/LD-22_transit_depot.png",
+   "size": [
+    503,
+    430
+   ]
+  },
+  "buildings/LD-23_repair_depot.webp": {
+   "from": "cut/living/buildings/LD-23_repair_depot.png",
+   "size": [
+    409,
+    368
+   ]
+  },
+  "buildings/LD-24_eastside_garage.webp": {
+   "from": "cut/living/buildings/LD-24_eastside_garage.png",
+   "size": [
+    401,
+    320
+   ]
+  },
+  "buildings/LD-25_hero_hall.webp": {
+   "from": "cut/living/buildings/LD-25_hero_hall.png",
+   "size": [
+    500,
+    468
+   ]
+  },
+  "buildings/LD-26_civic_clinic.webp": {
+   "from": "cut/living/buildings/LD-26_civic_clinic.png",
+   "size": [
+    496,
+    391
+   ]
+  },
+  "buildings/LD-27_elm_court.webp": {
+   "from": "cut/living/buildings/LD-27_elm_court.png",
+   "size": [
+    411,
+    326
+   ]
+  },
+  "buildings/LD-28_riverside_a.webp": {
+   "from": "cut/living/buildings/LD-28_riverside_a.png",
+   "size": [
+    385,
+    386
+   ]
+  },
+  "buildings/LD-29_riverside_b.webp": {
+   "from": "cut/living/buildings/LD-29_riverside_b.png",
+   "size": [
+    373,
+    386
+   ]
+  },
+  "buildings/LD-30_lowline_lofts.webp": {
+   "from": "cut/living/buildings/LD-30_lowline_lofts.png",
+   "size": [
+    416,
+    234
+   ]
+  },
+  "buildings/LD-31_mural_wall_blank.webp": {
+   "from": "cut/living/buildings/LD-31_mural_wall_blank.png",
+   "size": [
+    412,
+    170
+   ]
+  },
+  "buildings/LD-31b_mural_wall_half.webp": {
+   "from": "cut/living/buildings/LD-31b_mural_wall_half.png",
+   "size": [
+    412,
+    170
+   ]
+  },
+  "buildings/LD-31c_mural_wall_finished.webp": {
+   "from": "cut/living/buildings/LD-31c_mural_wall_finished.png",
+   "size": [
+    411,
+    170
+   ]
+  },
+  "props/LD-06_park_tree.webp": {
+   "from": "cut/living/props/LD-06_park_tree.png",
+   "size": [
+    372,
+    380
+   ]
+  },
+  "props/LD-07_park_bench.webp": {
+   "from": "cut/living/props/LD-07_park_bench.png",
+   "size": [
+    404,
+    227
+   ]
+  },
+  "props/LD-08b_plaza_fountain.webp": {
+   "from": "cut/living/props/LD-08b_plaza_fountain.png",
+   "size": [
+    360,
+    381
+   ]
+  },
+  "props/LD-10_skate_ramp.webp": {
+   "from": "cut/living/props/LD-10_skate_ramp.png",
+   "size": [
+    376,
+    288
+   ]
+  },
+  "props/LD-11_skate_rail_long.webp": {
+   "from": "cut/living/props/LD-11_skate_rail_long.png",
+   "size": [
+    376,
+    221
+   ]
+  },
+  "props/LD-12_skate_rail_short.webp": {
+   "from": "cut/living/props/LD-12_skate_rail_short.png",
+   "size": [
+    276,
+    196
+   ]
+  },
+  "props/LD-32_sewer_grate.webp": {
+   "from": "cut/living/props/LD-32_sewer_grate.png",
+   "size": [
+    344,
+    310
+   ]
+  },
+  "props/LD-35_traffic_light.webp": {
+   "from": "cut/living/props/LD-35_traffic_light.png",
+   "size": [
+    245,
+    392
+   ]
+  },
+  "props/LD-36_morrow_gate_idle.webp": {
+   "from": "cut/living/props/LD-36_morrow_gate_idle.png",
+   "size": [
+    456,
+    484
+   ]
+  },
+  "props/LD-36b_morrow_gate_open.webp": {
+   "from": "cut/living/props/LD-36b_morrow_gate_open.png",
+   "size": [
+    456,
+    484
+   ]
+  },
+  "vehicles/LD-40_car_n.webp": {
+   "from": "cut/living/vehicles/LD-40_car_n.png",
+   "size": [
+    331,
+    344
+   ]
+  },
+  "vehicles/LD-40b_car_e.webp": {
+   "from": "cut/living/vehicles/LD-40b_car_e.png",
+   "size": [
+    406,
+    276
+   ]
+  },
+  "vehicles/LD-42_truck_n.webp": {
+   "from": "cut/living/vehicles/LD-42_truck_n.png",
+   "size": [
+    376,
+    379
+   ]
+  },
+  "vehicles/LD-42b_truck_e.webp": {
+   "from": "cut/living/vehicles/LD-42b_truck_e.png",
+   "size": [
+    404,
+    301
+   ]
+  },
+  "vehicles/LD-43_van_n.webp": {
+   "from": "cut/living/vehicles/LD-43_van_n.png",
+   "size": [
+    351,
+    391
+   ]
+  },
+  "vehicles/LD-44_repair_van_n.webp": {
+   "from": "cut/living/vehicles/LD-44_repair_van_n.png",
+   "size": [
+    414,
+    390
+   ]
+  },
+  "vehicles/LD-44b_repair_van_e.webp": {
+   "from": "cut/living/vehicles/LD-44b_repair_van_e.png",
+   "size": [
+    404,
+    331
+   ]
+  },
+  "supers/LD-45a_kestrel_ray.webp": {
+   "from": "cut/living/supers/LD-45a_kestrel_ray.png",
+   "size": [
+    277,
+    391
+   ]
+  },
+  "supers/LD-45a_kestrel_ray_hurt.webp": {
+   "from": "cut/living/supers/LD-45a_kestrel_ray_hurt.png",
+   "size": [
+    298,
+    354
+   ]
+  },
+  "supers/LD-45b_anvil_mae.webp": {
+   "from": "cut/living/supers/LD-45b_anvil_mae.png",
+   "size": [
+    307,
+    404
+   ]
+  },
+  "supers/LD-45b_anvil_mae_hurt.webp": {
+   "from": "cut/living/supers/LD-45b_anvil_mae_hurt.png",
+   "size": [
+    304,
+    390
+   ]
+  },
+  "supers/LD-45c_mendwell.webp": {
+   "from": "cut/living/supers/LD-45c_mendwell.png",
+   "size": [
+    238,
+    382
+   ]
+  },
+  "supers/LD-45d_quillshot.webp": {
+   "from": "cut/living/supers/LD-45d_quillshot.png",
+   "size": [
+    233,
+    392
+   ]
+  },
+  "supers/LD-45e_riotgale.webp": {
+   "from": "cut/living/supers/LD-45e_riotgale.png",
+   "size": [
+    286,
+    402
+   ]
+  },
+  "ground/root_ground_tileset_32.webp": {
+   "from": "cut/tiles_32/ROOT_GROUND_TILESET.png",
+   "size": [
+    128,
+    128
+   ]
+  }
+ }
+}
