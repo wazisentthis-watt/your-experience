@@ -24,7 +24,7 @@ const url = 'file://' + require('path').resolve(__dirname, '..', 'index.html');
   out.battle = await page.evaluate(() => {
     const R = SIKEE.debug.R; const w = R.wanderers[0]; SIKEE.debug.startBattle(w);
     const battleOpen = !document.getElementById('sikeeBattle').hidden;
-    const blocked = SIKEE.blocking();
+    const blocked = SIKEE.fighting();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'j' })); // no mella: should not hit
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'j' }));
     const hpNoMella = w.hp;
@@ -32,11 +32,12 @@ const url = 'file://' + require('path').resolve(__dirname, '..', 'index.html');
     return { battleOpen, blocked, hpNoMella, mella: R.mella, foe: w.def.name, foeHp: w.hp };
   });
   // strike until the foe falls (real-time cooldown 0.35s)
-  for (let i = 0; i < 12 && await page.evaluate(() => SIKEE.blocking()); i++) {
-    await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'j' })));
-    await page.waitForTimeout(400);
+  for (let i = 0; i < 12 && await page.evaluate(() => SIKEE.fighting()); i++) {
+    // real-time fight: bring the foe into reach, clear the player's i-frames, and punch
+    await page.evaluate(() => { const R = SIKEE.debug.R, f = R.battle && R.battle.foe, G = window.__Y.G; if (f) { f.x = G.px + .8; f.y = G.py; f.st = 'idle'; f.cd = 99; R.p.inv = 5; R.p.atkCd = 0; R.stop = 0; } window.dispatchEvent(new KeyboardEvent('keydown', { key: 'j' })); });
+    await page.waitForTimeout(150);
   }
-  out.afterWin = await page.evaluate(() => { const s = SIKEE.debug.st(); return { blocking: SIKEE.blocking(), defeated: s.defeated, rescued: s.rescued, failed: s.failed, rescueStates: s.rescues.map(r => r.state), hp: SIKEE.debug.R.hp }; });
+  out.afterWin = await page.evaluate(() => { const s = SIKEE.debug.st(); return { blocking: SIKEE.fighting(), defeated: s.defeated, rescued: s.rescued, failed: s.failed, rescueStates: s.rescues.map(r => r.state), hp: SIKEE.debug.R.hp }; });
   // 3. plants at stage 4 at home, draw without error
   out.plants = await page.evaluate(() => {
     const Y = window.__Y; SIKEE.debug.st().plantStart = Date.now() - 45 * 60 * 1000;
@@ -54,7 +55,7 @@ const url = 'file://' + require('path').resolve(__dirname, '..', 'index.html');
     return { intrusionsLeft: s.intrusions, wanderersAtHome: SIKEE.debug.R.wanderers.filter(w => w.map === 'HOME').length };
   });
   await page.waitForTimeout(500);
-  out.intrusionFight = await page.evaluate(() => ({ blocking: SIKEE.blocking(), foe: SIKEE.debug.R.battle && SIKEE.debug.R.battle.foe.def.name }));
+  out.intrusionFight = await page.evaluate(() => ({ blocking: SIKEE.fighting(), foe: SIKEE.debug.R.battle && SIKEE.debug.R.battle.foe.def.name }));
   // run away from the house fight
   await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'x' })));
   // 6. Sikee boss after three defeats
@@ -62,13 +63,14 @@ const url = 'file://' + require('path').resolve(__dirname, '..', 'index.html');
     const Y = window.__Y; const s = SIKEE.debug.st(); s.defeated = 3; Y.fn.enterMap()('SAV', [4.5, 12.5]);
     SIKEE.debug.spawnSikeeOnRoad(); const boss = SIKEE.debug.R.wanderers.find(w => w.boss);
     if (boss) { SIKEE.debug.startBattle(boss); boss.hp = 3; }
-    return { bossSpawned: !!boss, battle: SIKEE.blocking() };
+    return { bossSpawned: !!boss, battle: SIKEE.fighting() };
   });
-  for (let i = 0; i < 6 && await page.evaluate(() => SIKEE.blocking()); i++) {
-    await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'j' })));
-    await page.waitForTimeout(400);
+  for (let i = 0; i < 6 && await page.evaluate(() => SIKEE.fighting()); i++) {
+    // real-time fight: bring the foe into reach, clear the player's i-frames, and punch
+    await page.evaluate(() => { const R = SIKEE.debug.R, f = R.battle && R.battle.foe, G = window.__Y.G; if (f) { f.x = G.px + .8; f.y = G.py; f.st = 'idle'; f.cd = 99; R.p.inv = 5; R.p.atkCd = 0; R.stop = 0; } window.dispatchEvent(new KeyboardEvent('keydown', { key: 'j' })); });
+    await page.waitForTimeout(150);
   }
-  out.bossDown = await page.evaluate(() => ({ bossDown: SIKEE.debug.st().bossDown, blocking: SIKEE.blocking() }));
+  out.bossDown = await page.evaluate(() => ({ bossDown: SIKEE.debug.st().bossDown, blocking: SIKEE.fighting() }));
   // 7. the game still runs: a few frames of movement and no page errors
   await page.waitForTimeout(800);
   out.errors = errs.slice(0, 5);
