@@ -17,9 +17,9 @@ let base = null; try { base = cp.execSync('git merge-base HEAD origin/main', { c
 if (base) {
   const changed = cp.execSync('git diff --name-only ' + base, { cwd: ROOT }).toString().trim().split('\n').filter(Boolean)
     .concat(cp.execSync('git ls-files --others --exclude-standard', { cwd: ROOT }).toString().trim().split('\n').filter(Boolean));
-  check('only index.html and your/powers/ change', changed.every(f => f === 'index.html' || f.startsWith('your/powers/')), changed);
+  check('only index.html, your/powers/ and your/controls/ change', changed.every(f => f === 'index.html' || f.startsWith('your/powers/') || f.startsWith('your/controls/')), changed);
   const d = cp.execSync('git diff ' + base + ' -- index.html', { cwd: ROOT }).toString().split('\n').filter(l => /^[+-][^+-]/.test(l));
-  check('index.html: only added your/powers script lines, nothing removed', d.length >= 3 && d.every(l => /^\+<script src="your\/powers\/[a-z_]+\.js"><\/script>$/.test(l)), d);
+  check('index.html: only added your/powers + your/controls script lines, nothing removed', d.length >= 3 && d.every(l => /^\+<script src="your\/(powers|controls)\/[a-z_]+\.js"><\/script>$/.test(l)), d);
 } else console.log('# (no git base found: file-change checks skipped)');
 const html = rd('index.html');
 check('scripts load in order after the Living layer', html.includes('<script src="your/living/living_district.js"></script>\n<script src="your/powers/power_schema.js"></script>\n<script src="your/powers/core_kit.js"></script>\n<script src="your/powers/your_powers.js"></script>\n'));
