@@ -26,7 +26,10 @@
     effect: { damage: { scale: [0.3, 1.25] }, knockback: { tiles: [0, 3] }, pull: { tiles: [0, 2] }, stun: { seconds: [0, 1.5] },
               slow: { pct: [0, 50], seconds: [0, 3] }, shield: { seconds: [0, 1] }, heal_self: { hp: [0, 1] }, bond_kaw: { amount: [0, 5] },
               energy_self: { amount: [0, 10] }, light: { radius: [0, 4] }, reveal: { radius: [0, 6] }, move: { tiles: [0, 4] } },
-    budget: 40
+    budget: 40,
+    hitCap: 60,                                                                   // max damage a player power can deal in one hit (after the Nimbus roll × scale)
+    minCooldown: { heal_self: 8, shield: 3, energy_self: 6, bond_kaw: 10 },
+    saved: 12                                                                     // player powers kept in the save
   };
   var ID_RE = /^(core|user|dlc)\.[a-z0-9-]{1,24}(\.[a-z0-9-]{1,32}){1,2}$/;
   var SEMVER = /^\d{1,3}\.\d{1,3}\.\d{1,3}$/;
@@ -132,6 +135,15 @@
       if (plain(p.limits)) Object.keys(p.limits).forEach(function (k) { if (['inCity', 'inRaid', 'inBoss'].indexOf(k) < 0 || typeof p.limits[k] !== 'boolean') err('limits.' + k + ' not allowed'); });
       else if (p.limits != null) err('limits must be an object');
       if (p.text != null) err('text block is core-only');
+      // anti-loop rules (PROPOSED): no endless healing, shielding, stun-lock, energy or bond farming
+      if (Array.isArray(p.effects) && num(p.cooldown)) {
+        var has = function (ty) { return p.effects.some(function (x) { return x && x.type === ty; }); }, st0 = p.effects.find(function (x) { return x && x.type === 'stun'; });
+        if (has('heal_self') && p.cooldown < CAPS.minCooldown.heal_self) err('a healing power needs a cooldown of at least ' + CAPS.minCooldown.heal_self + ' s');
+        if (has('shield') && p.cooldown < CAPS.minCooldown.shield) err('a shield power needs a cooldown of at least ' + CAPS.minCooldown.shield + ' s');
+        if (has('energy_self') && (p.cooldown < CAPS.minCooldown.energy_self || (plain(c) && c.energy > 0))) err('an energy-giving power needs a cooldown of at least ' + CAPS.minCooldown.energy_self + ' s and no energy cost');
+        if (has('bond_kaw') && p.cooldown < CAPS.minCooldown.bond_kaw) err('a Veyru bond power needs a cooldown of at least ' + CAPS.minCooldown.bond_kaw + ' s');
+        if (st0 && num(st0.seconds) && p.cooldown < 2 * st0.seconds) err('cooldown must be at least twice the stun (no stun-lock)');
+      }
     }
     var b = budget(p);
     if (tier !== 'core' && b > CAPS.budget) err('too strong: budget ' + b + ' > ' + CAPS.budget + ' (raise the cost or cooldown, or soften an effect)');

@@ -19,7 +19,7 @@ if (base) {
     .concat(cp.execSync('git ls-files --others --exclude-standard', { cwd: ROOT }).toString().trim().split('\n').filter(Boolean));
   check('only index.html and your/powers/ change', changed.every(f => f === 'index.html' || f.startsWith('your/powers/')), changed);
   const d = cp.execSync('git diff ' + base + ' -- index.html', { cwd: ROOT }).toString().split('\n').filter(l => /^[+-][^+-]/.test(l));
-  check('index.html: +3 script lines, nothing removed', d.length === 3 && d.every(l => /^\+<script src="your\/powers\/[a-z_]+\.js"><\/script>$/.test(l)), d);
+  check('index.html: only added your/powers script lines, nothing removed', d.length >= 3 && d.every(l => /^\+<script src="your\/powers\/[a-z_]+\.js"><\/script>$/.test(l)), d);
 } else console.log('# (no git base found: file-change checks skipped)');
 const html = rd('index.html');
 check('scripts load in order after the Living layer', html.includes('<script src="your/living/living_district.js"></script>\n<script src="your/powers/power_schema.js"></script>\n<script src="your/powers/core_kit.js"></script>\n<script src="your/powers/your_powers.js"></script>\n'));

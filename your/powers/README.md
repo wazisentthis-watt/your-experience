@@ -27,6 +27,35 @@ PROPOSAL_HOLD (PUBLISH HOLD). This is U1 of the unified Y.O.U.R. design (Drive d
 - the validator, with 28 broken records and a 3,000-record fuzz
 - the registry routing
 
+## U2: the power creator
+The owner decided on 21 Nov 2026 at 4:09 PM ET that custom powers are allowed in raids and boss fights.
+
+- **`power_runtime.js`** (`window.YOUR_POWER_RUNTIME`)
+  - **Save:** your powers are kept in the root save as `S.powers = { v:1, mine:[…], slots:[id, id] }`. That allows up to 12 powers and 2 custom slots.
+  - **Casting:** keys **4** and **5** cast the two slots, and so do the **★** buttons on the MELLA touch pad.
+  - **Each cast:**
+    - spends the power's energy, stamina and stability
+    - starts its cooldown
+    - plays the existing cast, strike or calm frames
+  - **Targeting:** a strike in front, a ring around you, a line ahead, a projectile, or a ground cell ahead. Each one stops at its max targets.
+  - **Damage:** for every target, `YOUR_V23.nimbus(<lane>, foe)` rolls the hit. The roll is multiplied by the power's scale (0.3–1.25) and capped at `CAPS.hitCap` (60). Then `YOUR_V23.damage` applies it.
+  - **Bosses keep their lessons:**
+    - BALLAST only takes ROOT/CORE ground powers between shifts.
+    - GLASSJAW only cracks from ROOT/CORE ground powers under him.
+    - Direct powers bounce off both.
+  - **Effects art:** frames of the existing `mella_vfx_96.webp`. Your colour choice only rotates the hue.
+  - **Broken saved powers:** a saved power that no longer validates (an edited save, or a newer rule) is **switched off, not deleted**.
+- **`power_forge.js`** (`window.YOUR_POWER_FORGE`): Phone → Y.O.U.R. → **Open the Power Forge**. It lets you:
+  - pick a name, lane, shape, effects, costs, cooldown, look (VFX row, icon, colour) and move
+  - see the live validator and budget meter (Save stays disabled until the power passes)
+  - Save, Save + equip ★4/★5, Try it now, and Export/Import JSON (imports are validated again)
+- **Anti-loop caps** (PROPOSED, in `power_schema.js`):
+  - heal needs a cooldown of at least 8 s
+  - shield needs at least 3 s
+  - giving energy needs at least 6 s and no energy cost
+  - Veyru bond needs at least 10 s
+  - the cooldown must be at least twice the stun
+- **Tests:** `node your/powers/tests/power_forge.test.cjs`
+
 ## Next
-- **U2:** the Power Forge. Make, test and equip your own powers in two custom slots. They run through the same Nimbus path, inside these caps.
 - **U4:** DLC powers.
