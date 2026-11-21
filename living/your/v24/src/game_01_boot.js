@@ -21,10 +21,11 @@ var SRC = { hero: 'your/assets/hero/hero_sheet_96.png', npc0: 'your/assets/npc0_
 ['happy', 'curious', 'alert', 'calm'].forEach(function (m) { SRC['portrait_' + m] = 'your/assets/kaw/veyru/portraits/veyru_' + m + '.png'; });   // ChatGPT CG-09 Veyru portraits (art 47), one per brain mood
 ['scout', 'walker', 'breacher'].forEach(function (k) { for (var i = 0; i < 4; i++) SRC[k + i] = 'your/assets/villains/metal_machines/' + k + '_' + i + '.png'; });
 function loadAll(done) {
-  var keys = Object.keys(SRC), left = keys.length + 1;
+  var keys = Object.keys(SRC), left = keys.length + 2;
   function one() { if (--left === 0) done(); }
   keys.forEach(function (k) { var im = new Image(); im.onload = function () { IMG[k] = im; one(); }; im.onerror = function () { L.missing = (L.missing || []).concat([SRC[k]]); one(); }; im.src = SRC[k]; });
   fetch('your/assets/villains/metal_machines/frames.json').then(function (r) { return r.json(); }).then(function (j) { MFR = j; one(); }).catch(function () { MFR = null; one(); });
+  if (window.MAP_ART && MAP_ART.whenReady) MAP_ART.whenReady.then(function () { one(); }, function () { one(); }); else one();
 }
 var TINTS = [0, 40, 100, 160, 220, 300];
 function tinted(base, deg) { var c = document.createElement('canvas'); c.width = base.width; c.height = base.height; var x = c.getContext('2d'); x.filter = 'hue-rotate(' + deg + 'deg) saturate(1.1)'; x.drawImage(base, 0, 0); return c; }

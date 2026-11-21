@@ -1,0 +1,97 @@
+{
+  "tile": 32,
+  "image": "tiles_32/ROOT_GROUND_TILESET.png",
+  "tiles": {
+    "LD-01_sidewalk": {
+      "x": 0,
+      "y": 0,
+      "w": 32,
+      "h": 32,
+      "file": "tiles_32/LD-01_sidewalk_32.png"
+    },
+    "LD-01b_curb": {
+      "x": 32,
+      "y": 0,
+      "w": 32,
+      "h": 32,
+      "file": "tiles_32/LD-01b_curb_32.png"
+    },
+    "LD-02_asphalt": {
+      "x": 64,
+      "y": 0,
+      "w": 32,
+      "h": 32,
+      "file": "tiles_32/LD-02_asphalt_32.png"
+    },
+    "LD-02b_asphalt_worn": {
+      "x": 96,
+      "y": 0,
+      "w": 32,
+      "h": 32,
+      "file": "tiles_32/LD-02b_asphalt_worn_32.png"
+    },
+    "LD-03_dash_v": {
+      "x": 0,
+      "y": 32,
+      "w": 32,
+      "h": 32,
+      "file": "tiles_32/LD-03_dash_v_32.png"
+    },
+    "LD-03b_dash_h": {
+      "x": 32,
+      "y": 32,
+      "w": 32,
+      "h": 32,
+      "file": "tiles_32/LD-03b_dash_h_32.png"
+    },
+    "LD-04_crosswalk": {
+      "x": 64,
+      "y": 32,
+      "w": 32,
+      "h": 32,
+      "file": "tiles_32/LD-04_crosswalk_32.png"
+    },
+    "LD-05_grass": {
+      "x": 96,
+      "y": 32,
+      "w": 32,
+      "h": 32,
+      "file": "tiles_32/LD-05_grass_32.png"
+    },
+    "LD-08_plaza": {
+      "x": 0,
+      "y": 64,
+      "w": 32,
+      "h": 32,
+      "file": "tiles_32/LD-08_plaza_32.png"
+    },
+    "MC-01_concrete": {
+      "x": 32,
+      "y": 64,
+      "w": 32,
+      "h": 32,
+      "file": "tiles_32/MC-01_concrete_32.png"
+    },
+    "MC-01b_concrete_dirty": {
+      "x": 64,
+      "y": 64,
+      "w": 32,
+      "h": 32,
+      "file": "tiles_32/MC-01b_concrete_dirty_32.png"
+    },
+    "MC-02_steel": {
+      "x": 96,
+      "y": 64,
+      "w": 32,
+      "h": 32,
+      "file": "tiles_32/MC-02_steel_32.png"
+    },
+    "MC-17c_canal_water": {
+      "x": 0,
+      "y": 96,
+      "w": 32,
+      "h": 32,
+      "file": "tiles_32/MC-17c_canal_water_32.png"
+    }
+  }
+}

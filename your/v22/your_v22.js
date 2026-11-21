@@ -150,11 +150,12 @@
     function drawKaw() { var cx = X.cx, idle = img(KC.art.idle), size = KC.size; if (!idle || kaw.off) return; var vertical = kaw.moving && (kaw.dir === 'up' || kaw.dir === 'down');
       var im = kaw.moving ? (img(KC.art.walkR[Math.floor(kaw.ph * .6) % 4]) || idle) : idle, bob = kaw.moving ? 0 : Math.sin(performance.now() / 420) * .8;
       var X0 = kaw.x * T, Y0 = kaw.y * T + 8;
-      cx.save(); cx.translate(X0, Y0); cx.fillStyle = 'rgba(0,0,0,.28)'; cx.beginPath(); cx.ellipse(0, 0, 14, 5, 0, 0, 7); cx.fill();
+      var art = !!(window.YOUR_KAW_ART && YOUR_KAW_ART.draw(cx, kaw, X0, Y0, size));   // your/art/your_kaw_art.js (4-direction art); false = old side-view body
+      if (!art) { cx.save(); cx.translate(X0, Y0); cx.fillStyle = 'rgba(0,0,0,.28)'; cx.beginPath(); cx.ellipse(0, 0, 14, 5, 0, 0, 7); cx.fill();
       if (V22.calmFx) { cx.strokeStyle = 'rgba(173,255,154,' + V22.calmFx + ')'; cx.lineWidth = 2; cx.beginPath(); cx.arc(0, -size * .45, 18 + (1 - V22.calmFx) * 16, 0, 7); cx.stroke(); }
-      if (kaw.face === 'left') cx.scale(-1, 1); cx.imageSmoothingEnabled = false; cx.drawImage(im, -size / 2, -size * .97 + bob, size, size); cx.restore();
-      count(vertical ? 'kaw_ud_placeholder' : kaw.moving ? 'kaw_walk' : 'kaw_idle'); count('kaw_' + ((G.map && G.map.id === 'HOME') ? 'home' : 'city'));
-      var tag = 'Veyru · KAW' + (vertical ? ' (temp side-view art)' : '');
+      if (kaw.face === 'left') cx.scale(-1, 1); cx.imageSmoothingEnabled = false; cx.drawImage(im, -size / 2, -size * .97 + bob, size, size); cx.restore(); }
+      count(art ? (kaw.moving ? 'kaw_art_walk' : 'kaw_art_idle') : vertical ? 'kaw_ud_placeholder' : kaw.moving ? 'kaw_walk' : 'kaw_idle'); count('kaw_' + ((G.map && G.map.id === 'HOME') ? 'home' : 'city'));
+      var tag = 'Veyru · KAW' + (vertical && !art ? ' (temp side-view art)' : '');
       cx.save(); cx.font = '700 9px JetBrains Mono, monospace'; cx.textAlign = 'center'; cx.fillStyle = '#000'; cx.fillText(tag, X0 + .5, kaw.y * T - 33.5); cx.fillStyle = '#9dffb0'; cx.fillText(tag, X0, kaw.y * T - 34); cx.restore(); }
     function drawCells() { var cx = X.cx, t = performance.now() / 1000;
       P.cells.forEach(function (c) { var x = c.x * T, y = c.y * T + 6, r = c.r * T, a = Math.min(1, c.life / 1.2, c.t / .25); cx.save(); cx.globalAlpha = a;
@@ -183,7 +184,7 @@
       if (!near && G.ride !== 'car' && kawDist() < 2.4) return openKaw(); return _in(); });
     var _on = F.openNpc(); X.set('openNpc', function (n) { if (n && n.your === 'veyru') return openKaw(); return _on(n); });
     function openKaw() { var k = kawState(); F.openSheet()('<h3>Veyru</h3><div class="sh-sub">KAW · ' + esc(KC.species) + ' · ' + KC.elements.join(' + ') + ' · your bonded companion (not property). Bond ' + Math.round(k.bond) + '/100.</div>' +
-        '<div class="sh-sub dim">' + esc(KC.lore.join(' · ')) + '. Temporary side-view art; 4-direction sheet still to come.</div><div class="ydlg" id="ydlg"></div>' +
+        '<div class="sh-sub dim">' + esc(KC.lore.join(' · ')) + (window.YOUR_KAW_ART && YOUR_KAW_ART.ready.walk ? '.' : '. Temporary side-view art; 4-direction sheet still to come.') + '</div><div class="ydlg" id="ydlg"></div>' +
         '<div class="acts"><button type="button" class="btn" id="v22Calm">Calm Veyru (C) · +' + MC.calm.bond + ' bond</button></div>');
       var b = $('#v22Calm'); if (b) b.onclick = function () { var ok = POW.calm(); count('pw_calm_sheet'); b.textContent = ok ? 'Veyru is calm · bond ' + Math.round(kawState().bond) : 'Get closer to Veyru'; };
       talk(); count('kaw_talk'); }

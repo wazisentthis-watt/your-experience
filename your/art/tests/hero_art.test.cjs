@@ -1,0 +1,33 @@
+// node your/art/tests/hero_art.test.cjs · hero power art layer (your/art/your_hero_art.js). Drafted by WIR Recovery for owner review.
+const fs = require('fs'), path = require('path'), vm = require('vm');
+const ROOT = path.join(__dirname, '..', '..', '..'); let pass = 0, fail = 0;
+const ok = (c, m) => { if (c) { pass++; console.log('ok - ' + m); } else { fail++; console.log('FAIL - ' + m); } };
+const imgs = []; function Image() { imgs.push(this); }
+let installed = 0; const win = { YOUR_V20_INSTALL: () => { installed++; }, WIRPeople: { draw() { win.__pd = (win.__pd || 0) + 1; } } };
+const ctx = vm.createContext({ window: win, Image, Math, console, performance: { now: () => 1000 }, document: { createElement: () => ({}), head: { appendChild() { } } } });
+vm.runInContext(fs.readFileSync(path.join(ROOT, 'your/art/your_hero_art.js'), 'utf8'), ctx); const A = win.YOUR_HERO_ART;
+ok(A && typeof A.pick === 'function', 'YOUR_HERO_ART.pick exists');
+ok(imgs.length === 5, 'loads 5 sheets'); for (const i of imgs) ok(fs.existsSync(path.join(ROOT, i.src)), 'asset exists: ' + i.src);
+ok(fs.existsSync(path.join(ROOT, A.icons)), 'icon sheet exists');
+const pk = (o) => A.pick(Object.assign({ dir: 'down', moving: false, ph: 0, t: 0, P: {}, hurt: false, calmFx: 0 }, o));
+ok(pk({}) === null, 'plain idle → null (existing hero_sheet_96 frames)');
+ok(pk({ hurt: true }).sh === 'hitHurt' && pk({ hurt: true }).col === 3 && pk({ hurt: true }).row === 0, 'hurt facing down → front hurt');
+ok(pk({ hurt: true, dir: 'up' }).row === 1, 'hurt facing up → back hurt');
+const act = (a, k, dir) => pk({ dir, P: { act: a, actT: 1 - k, actDur: 1 } });
+ok(act('hit', .1, 'down').col === 0 && act('hit', .9, 'down').col === 2, 'hit down → front hit frames 0..2');
+ok(act('hit', .5, 'up').row === 1, 'hit up → back hit row'); ok(act('hit', .5, 'left') === null, 'hit sideways → existing side frames');
+ok(act('blast', .2, 'down').sh === 'cast' && act('blast', .2, 'down').col === 0 && act('blast', .8, 'down').col === 1, 'blast down → cast down 0,1');
+ok(act('blast', .2, 'up').col === 2 && act('core', .8, 'up').col === 3, 'blast/core up → cast up 2,3'); ok(act('blast', .5, 'right') === null, 'blast sideways → existing');
+ok(act('transform', .5, 'down') === null && act('root', .5, 'down') === null, 'transform/root bursts → existing');
+ok(pk({ calmFx: .9 }).sh === 'calm', 'calm effect, standing → calm frames'); ok(pk({ calmFx: .9, moving: true }) === null, 'calm effect while walking → existing walk');
+const R = (dir, moving) => pk({ dir, moving, P: { transformed: true } });
+ok(R('down').sh === 'refr' && R('down').row === 0, 'Living Refraction down → front row'); ok(R('up').row === 2, 'up → back row');
+ok(R('left').row === 1 && !R('left').flip && R('right').flip === true, 'side row faces left; right is mirrored');
+ok(pk({ hurt: true, P: { transformed: true } }).why === 'hurt', 'hurt beats refraction');
+win.YOUR_V20_INSTALL({ G: { your: {} }, T: 32, cx: {}, fn: { drawPlayer: () => () => { } }, set() { } });
+ok(installed === 1, 'install chain: previous layer still runs first');
+const src = fs.readFileSync(path.join(ROOT, 'your/art/your_hero_art.js'), 'utf8');
+ok(!/P\.(energy|stamina|stab)\s*[-+]?=[^=]/.test(src), 'never changes energy / stamina / stability');
+const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+ok(html.indexOf('your/art/your_hero_art.js') > html.indexOf('your/v22/your_v22.js') && html.indexOf('your/art/your_hero_art.js') < html.indexOf('your/v23/vendor/wir_mella_combat.js'), 'index.html loads it right after v22');
+console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);
