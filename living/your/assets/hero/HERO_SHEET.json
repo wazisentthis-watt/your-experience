@@ -1,0 +1,36 @@
+{
+ "status": "PROPOSAL_HOLD",
+ "version": "v1.2.1",
+ "cell": 96,
+ "cols": 16,
+ "rows": 11,
+ "source": {
+  "walk": "your-art/chatgpt/19_OWNER_STARTER_WALK_SHEET.png (rows down,left,right,up)",
+  "fight": "your-art/chatgpt/20_OWNER_STARTER_FIGHT_SHEET.png (idle,step,windup,punch,kick,block,hit,victory)",
+  "skate": "your-art/chatgpt/22_OWNER_STARTER_SKATE_SHEET.png (2x4 push,push,cruise,crouch / ollie,air,land,bail) -> row 6",
+  "ko_cast": "your-art/chatgpt/23_OWNER_STARTER_KO_CAST_SHEET.png (knockback,fall,down,getup,cast windup,cast release,energy blast,recover) -> row 4/5 cols 9-15, rows 0-3 cols 12-15, row 6 col 15"
+ },
+ "native": [
+  "idle/walk 4 dirs (idle = walk frame 0 + 1px breathe)",
+  "fight idle,step,windup,punch,kick,block,hit,victory (right; left = mirror)",
+  "KO knockback,fall,down + cast windup,release,blast,recover (23)",
+  "skate row 6: cruise,push,crouch,ollie,air,bail,push2,land (22)"
+ ],
+ "fallback": [
+  "rows 0-3 cast cols 12-15: native 23 cast frames reused for down/up (3/4 view), mirrored for left",
+  "row 6 GRIND = crouch frame reused (no grind frame in 22)"
+ ],
+ "moves_rows": {
+  "7": "RIGHT: 0-3 run (24), 4-7 jump crouch/rise/apex/land (24), 8-9 dash (25), 10 slide, 11 roll, 12-13 climb ladder, 14-15 climb wall (25)",
+  "8": "mirror of 7 (LEFT)",
+  "9": "RIGHT: 0 takeoff, 1 hover, 2 fly diag, 3 fly side (26 row 1); 4 fly UP, 5 fly DOWN, 6-7 fly RIGHT (26 row 2 = 4-direction flight angles, NOT true top-down); 8-9 swim side, 10-11 swim dive (27); 12-13 power-up, 14 slam, 15 spin (27)",
+  "10": "mirror of 9 (LEFT); fly up/down not mirrored"
+ },
+ "scale": {
+  "walk_median_px": 290,
+  "fight_median_px": 414,
+  "body_px_in_cell": 88
+ },
+ "baseline_px_from_bottom": 4,
+ "portrait": "assets/hero/hero_portrait_256.png (from ChatGPT 18, keyed)"
+}

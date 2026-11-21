@@ -1,0 +1,9 @@
+/* Y.O.U.R. v2.0 offline fonts: copied from the build box system font folder (Google Fonts families, SIL Open Font License 1.1).
+   Replaces the Google Fonts CDN links of Valence Life v3 and its football.html. No network. */
+@font-face{font-family:'Unbounded';src:url('Unbounded-VariableFont_wght.ttf') format('truetype');font-weight:200 900;font-style:normal;font-display:swap}
+@font-face{font-family:'Atkinson Hyperlegible';src:url('AtkinsonHyperlegible-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'Atkinson Hyperlegible';src:url('AtkinsonHyperlegible-Bold.ttf') format('truetype');font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:'JetBrains Mono';src:url('JetBrainsMono-VariableFont_wght.ttf') format('truetype');font-weight:100 800;font-style:normal;font-display:swap}
+@font-face{font-family:'Press Start 2P';src:url('PressStart2P-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'Barlow Condensed';src:url('BarlowCondensed-Medium.ttf') format('truetype');font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:'Barlow Condensed';src:url('BarlowCondensed-Bold.ttf') format('truetype');font-weight:700;font-style:normal;font-display:swap}

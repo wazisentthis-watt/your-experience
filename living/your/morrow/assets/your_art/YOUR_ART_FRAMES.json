@@ -1,0 +1,98 @@
+{
+ "villain_foreman": {
+  "src": "your-art/chatgpt/33_CG-15_FOREMAN.png",
+  "cols": 4,
+  "rows": 2,
+  "cell": 160,
+  "empty": [],
+  "bytes": 229279
+ },
+ "villain_ballast": {
+  "src": "your-art/chatgpt/34_CG-10_BALLAST.png",
+  "cols": 4,
+  "rows": 2,
+  "cell": 160,
+  "empty": [],
+  "bytes": 214594
+ },
+ "villain_glassjaw": {
+  "src": "your-art/chatgpt/35_CG-11_GLASSJAW.png",
+  "cols": 4,
+  "rows": 2,
+  "cell": 160,
+  "empty": [],
+  "bytes": 240820
+ },
+ "villain_slipline": {
+  "src": "your-art/chatgpt/45_CG-12_SLIPLINE.png",
+  "cols": 4,
+  "rows": 2,
+  "cell": 160,
+  "empty": [],
+  "bytes": 228365
+ },
+ "villain_nyaxi": {
+  "src": "your-art/chatgpt/37_CG-13_NYAXI.png",
+  "cols": 4,
+  "rows": 2,
+  "cell": 160,
+  "empty": [],
+  "bytes": 255748
+ },
+ "villain_rattle": {
+  "src": "your-art/chatgpt/38_CG-14_RATTLE.png",
+  "cols": 4,
+  "rows": 2,
+  "cell": 160,
+  "empty": [],
+  "bytes": 292197
+ },
+ "hero_hit_hurt": {
+  "src": "your-art/chatgpt/39_CG-02_HIT_HURT.png",
+  "cols": 4,
+  "rows": 2,
+  "cell": 128,
+  "empty": [],
+  "bytes": 154330
+ },
+ "hero_cast_up_down": {
+  "src": "your-art/chatgpt/40_CG-03_CAST_UP_DOWN.png",
+  "cols": 4,
+  "rows": 1,
+  "cell": 128,
+  "empty": [],
+  "bytes": 76568
+ },
+ "hero_calm": {
+  "src": "your-art/chatgpt/41_CG-04_CALM.png",
+  "cols": 4,
+  "rows": 1,
+  "cell": 128,
+  "empty": [],
+  "bytes": 67835
+ },
+ "hero_living_refraction": {
+  "src": "your-art/chatgpt/42_CG-05_LIVING_REFRACTION.png",
+  "cols": 4,
+  "rows": 3,
+  "cell": 128,
+  "empty": [],
+  "bytes": 225241
+ },
+ "power_icons": {
+  "src": "your-art/chatgpt/43_CG-07_POWER_SYSTEM_ICONS.png",
+  "cols": 7,
+  "rows": 2,
+  "cell": 96,
+  "empty": [],
+  "bytes": 186738
+ },
+ "mella_power_vfx": {
+  "src": "your-art/chatgpt/44_CG-06_MELLA_POWER_VFX.png",
+  "cols": 6,
+  "rows": 5,
+  "cell": 96,
+  "empty": [],
+  "bytes": 257616
+ }
+}

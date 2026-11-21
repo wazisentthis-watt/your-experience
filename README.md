@@ -2,6 +2,8 @@
 
 **▶ Play in your browser:** https://wazisentthis-watt.github.io/your-experience/
 
+**▶ v2.4 Living District + Morrow City (PROPOSED, separate folder `living/`):** https://wazisentthis-watt.github.io/your-experience/living/
+
 Y.O.U.R. is the playable doorway into **What Is Reality? (WIR)**. You play as yourself, a superpowered hero who is the **MELLA** with the First Wish powers. **Veyru**, a KAW (Rainroot Lynx), follows you and fights beside you. You live a day in the WIR city (Valence Life), fight villains, survive raids, take jobs, skate, fight in the arena, and play **Elemental Gridiron** football. Your progress is saved to one shared hero profile that other WIR games can read.
 
 This repository is build **v2.3**. It runs fully offline in the browser: no server, no CDN, no account. An AI dialogue provider can be added in Settings, and its key stays in that browser only.

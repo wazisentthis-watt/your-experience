@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Y.O.U.R. Experience — Living District · v2.4-living · PROPOSAL_HOLD</title>
+<style>
+:root{--teal:#2ec4b6;--gold:#ffcf6a;--ink:#0d1117;--pan:rgba(10,14,22,.82)}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:#0b0f16;color:#e9eef5;font:13px/1.35 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+#cv{position:fixed;inset:0;width:100%;height:100%;display:block;image-rendering:auto}
+.pan{position:fixed;background:var(--pan);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:6px 8px;z-index:5;pointer-events:none}
+#hudL{left:max(8px,env(safe-area-inset-left));top:max(8px,env(safe-area-inset-top));max-width:min(300px,46vw)}
+#hudL .brand{font-weight:800;font-size:10px;letter-spacing:.06em;color:var(--gold)}#hudL .brand b{color:var(--teal)}
+#hudL .clk{font-weight:800;font-size:15px}#hudL .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:2px}
+.chip{display:inline-block;padding:1px 6px;border-radius:9px;background:#1e2a3a;font-size:10px;font-weight:700;letter-spacing:.04em}
+.chip.mode{background:#163a37;color:#8ff5ea}.chip.dir{background:#3a2a16;color:#ffd58a}
+.hearts{color:#ff6b81;font-size:14px;letter-spacing:1px}
+.bars{display:grid;grid-template-columns:auto 1fr;gap:1px 5px;font-size:9px;margin-top:3px;min-width:150px}.bar{height:6px;border-radius:3px;background:#263142;overflow:hidden;align-self:center}.bar i{display:block;height:100%}
+#hudR{right:max(8px,env(safe-area-inset-right));top:max(8px,env(safe-area-inset-top));width:min(290px,48vw);max-height:46vh;overflow:hidden}
+#hudR:empty{display:none}.inc{margin-bottom:6px}.inc h4{margin:0 0 2px;font-size:12px;color:#ffb347}.inc .cause{font-size:10px;opacity:.75;margin-bottom:2px}
+.ob{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ob.done{color:#8ce99a}.ob.failed{color:#ff8787;text-decoration:line-through}.heroes{font-size:10px;color:#a5d8ff}
+#feed{left:max(8px,env(safe-area-inset-left));bottom:max(8px,env(safe-area-inset-bottom));width:min(420px,60vw);font-size:11px}
+#feed div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#feed .alert{color:#ffb347}#feed .hero{color:#8ce99a}#feed .city{color:#ffd43b}#feed .villain{color:#da77f2}#feed .discovery{color:#63e6be}#feed .history{color:#a5d8ff}
+#mini{position:fixed;right:max(8px,env(safe-area-inset-right));bottom:max(8px,env(safe-area-inset-bottom));width:160px;height:110px;border-radius:8px;border:1px solid rgba(255,255,255,.2);z-index:5;background:#111;pointer-events:none}
+#topBtns{position:fixed;z-index:7;left:50%;transform:translateX(-50%);top:max(8px,env(safe-area-inset-top));display:flex;gap:6px}
+button{font:inherit;cursor:pointer}
+.tb{background:var(--pan);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:9px;padding:5px 9px;font-weight:700;font-size:12px}
+#talk{position:fixed;left:50%;transform:translateX(-50%);bottom:130px;max-width:min(560px,92vw);z-index:8;pointer-events:none;display:none}
+#talk.on{display:block}#talk b{color:var(--teal)}
+.ovl{position:fixed;inset:0;background:rgba(5,8,12,.86);z-index:20;display:none;overflow:auto;padding:max(14px,env(safe-area-inset-top)) 14px 14px}
+.ovl.on{display:block}.card{max-width:760px;margin:0 auto;background:#121a26;border:1px solid #2a3a50;border-radius:14px;padding:14px}
+.card h2{margin:0 0 6px;font-size:18px}.card h3{margin:12px 0 4px;font-size:13px;color:var(--gold)}
+.btns{display:flex;flex-wrap:wrap;gap:6px}.mb{background:#1e2a3a;color:#fff;border:2px solid #2f4460;border-radius:10px;padding:8px 12px;font-weight:700}
+.mb.sel{border-color:var(--teal);background:#163a37}.mb:focus,.mb.focus{outline:3px solid var(--gold)}
+.hist{font-size:12px;border-left:3px solid #555;padding:3px 8px;margin:4px 0;background:#0e151f}
+.hist.contained{border-color:#40c057}.hist.partial{border-color:#fab005}.hist.failed{border-color:#fa5252}.hist.note{border-color:#7950f2}.hist.unnoticed,.hist.tracked{border-color:#495057;opacity:.8}
+.small{font-size:11px;opacity:.8}.tag{font-size:9px;padding:1px 5px;border-radius:6px;background:#2a2140;color:#d0bfff;margin-left:4px}
+table.v{border-collapse:collapse;font-size:11px;width:100%}table.v td{border-top:1px solid #243246;padding:3px 4px;vertical-align:top}
+#touch{position:fixed;inset:0;z-index:6;pointer-events:none;display:none}#touch.on{display:block}
+#stick{position:absolute;left:max(18px,env(safe-area-inset-left));bottom:max(24px,env(safe-area-inset-bottom));width:132px;height:132px;border-radius:50%;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.18);pointer-events:auto}
+#knob{position:absolute;left:41px;top:41px;width:50px;height:50px;border-radius:50%;background:rgba(46,196,182,.55)}
+#pad{position:absolute;right:max(10px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,52px);gap:7px;pointer-events:auto}
+#pad button{width:52px;height:52px;border-radius:50%;border:2px solid rgba(255,255,255,.25);background:rgba(20,30,44,.78);color:#fff;font-weight:800;font-size:10px;letter-spacing:.02em;padding:0}
+#pad button.big{background:rgba(46,196,182,.35)}
+body.touchui #feed{bottom:auto;top:auto;bottom:170px;width:min(380px,70vw)}body.touchui #mini{bottom:auto;top:calc(max(8px,env(safe-area-inset-top)) + 0px);right:auto;left:auto;display:none}
+@media (max-width:560px){#hudR{top:auto;bottom:246px;right:8px;width:62vw;max-height:17vh;font-size:10px}#hudR .cause{display:none}#hudL{max-width:56vw}.bars{min-width:120px}#feed{display:none}body.touchui #feed{display:block;bottom:170px;font-size:10px;width:64vw}#topBtns{top:auto;bottom:max(176px,calc(env(safe-area-inset-bottom) + 170px));left:auto;right:8px;transform:none;flex-direction:column}}
+@media (max-height:460px){#hudR{max-height:40vh;width:min(240px,34vw)}#feed{display:none}#mini{display:none}#hudL .bars{display:none}#pad{grid-template-columns:repeat(4,46px);gap:5px}#pad button{width:46px;height:46px}#stick{width:110px;height:110px}#knob{left:32px;top:32px;width:46px;height:46px}#talk{bottom:16px}}
+#boot{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:30;background:#0b0f16;flex-direction:column;gap:6px;text-align:center;padding:16px}
+#boot .t{font-weight:900;font-size:clamp(20px,5vw,34px);color:var(--gold)}#boot .t b{color:var(--teal)}
+</style></head><body>
+<canvas id="cv"></canvas>
+<div id="boot"><div class="t"><b>Y.O.U.R.</b> Living District</div><div class="small">v2.4-living · PROPOSAL_HOLD · CCE 2.0 vertical slice · loading…</div></div>
+<div id="hudL" class="pan"></div><div id="hudR" class="pan"></div><div id="feed" class="pan"></div><canvas id="mini" width="320" height="220"></canvas>
+<div id="topBtns"><button class="tb" id="bMenu" aria-label="Menu">☰ Menu</button><button class="tb" id="bHist" aria-label="City history">📜 History</button></div>
+<div id="talk" class="pan"></div>
+<div id="menu" class="ovl" role="dialog" aria-label="Menu"><div class="card" id="menuCard"></div></div>
+<div id="hist" class="ovl" role="dialog" aria-label="City history"><div class="card" id="histCard"></div></div>
+<div id="touch"><div id="stick"><div id="knob"></div></div><div id="pad">
+ <button data-k="calm">CALM</button><button data-k="skate">SKATE</button><button data-k="car">CAR</button><button data-k="act" class="big">TALK<br>/ACT</button>
+ <button data-k="dash">DASH</button><button data-k="blast" class="big">BLAST</button><button data-k="hit" class="big">HIT</button><button data-k="jump" class="big">JUMP</button>
+</div></div>
+<script src="your/modules/wir_hero_profile.js"></script>
+<script src="your/v23/vendor/wir_mella_combat.js"></script>
+<script src="your/v24/vendor/wir_mella_passport.js"></script>
+<script src="your/v24/vendor/wir_world_rules.js"></script>
+<script src="your/v24/vendor/wir_kaw_living_brain.js"></script>
+<script src="your/v24/kaw_brain_adapter.js"></script>
+<script src="your/v24/cce_config.js"></script>
+<script src="your/v24/cce_core.js"></script>
+<script src="your/v24/living.js"></script>
+</body></html>

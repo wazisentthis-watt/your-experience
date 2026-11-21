@@ -1,0 +1,114 @@
+[
+ {
+  "file": "adda483bc8a7c4b0.png",
+  "sha256": "adda483bc8782a9e6ffa1c9c5c21166075e697a46249d3e03597dbaf814be6be",
+  "library_file": "library/sprites/adda483bc8782a9e.png",
+  "games": [
+   "WishBorn"
+  ],
+  "names": [
+   "hero"
+  ],
+  "w": 288,
+  "h": 384,
+  "role": "PLACEHOLDER"
+ },
+ {
+  "file": "npc0_livingwir.png",
+  "sha256": "53ad63d1630c8a09f1ae808c30fe88725f43acc228104f29776a53a31e1496e5",
+  "library_file": "library/sprites/53ad63d1630c8a09.png",
+  "games": [
+   "Living_WIR"
+  ],
+  "names": [
+   "npc0"
+  ],
+  "w": 64,
+  "h": 64,
+  "role": "PLACEHOLDER"
+ },
+ {
+  "file": "npc1_livingwir.png",
+  "sha256": "ec96feebe57d6485637142bcfd7331c35e78135a51225c4011db3d691aa835af",
+  "library_file": "library/sprites/ec96feebe57d6485.png",
+  "games": [
+   "Living_WIR"
+  ],
+  "names": [
+   "npc1"
+  ],
+  "w": 64,
+  "h": 64,
+  "role": "PLACEHOLDER"
+ },
+ {
+  "file": "rider_atlas_rifft.png",
+  "sha256": "52c742888c53ab5df0ed428d37a5e0e8885c3ad2ccd35c5a667b44cb6769e8ca",
+  "library_file": "library/sprites/52c742888c53ab5d.png",
+  "games": [
+   "RIFFT_RIDE_RZ"
+  ],
+  "names": [
+   "WIR100_RIDER_ATLAS_8x6"
+  ],
+  "w": 384,
+  "h": 288,
+  "role": "PLACEHOLDER"
+ },
+ {
+  "file": "board_rifft.png",
+  "sha256": "af918d49724505d171cab77b5a8388c9aa6b364c9e16b10cd338a27976bf0a84",
+  "library_file": "library/sprites/af918d49724505d1.png",
+  "games": [
+   "RIFFT_RIDE_RZ"
+  ],
+  "names": [
+   "board_01_mint-current"
+  ],
+  "w": 48,
+  "h": 48,
+  "role": "PLACEHOLDER"
+ },
+ {
+  "file": "rail_rifft.png",
+  "sha256": "38c030d91317539eeb98de48bbda83e72bfae4aff3fe9b9cd9411831680ccdc8",
+  "library_file": "library/sprites/38c030d91317539e.png",
+  "games": [
+   "RIFFT_RIDE_RZ"
+  ],
+  "names": [
+   "rail_01_straight_low"
+  ],
+  "w": 48,
+  "h": 48,
+  "role": "PLACEHOLDER"
+ },
+ {
+  "file": "ramp_rifft.png",
+  "sha256": "a4718f902ac97e7f6c76e6cbf0787e755ab46d70fe42135b35e02d84704fdc49",
+  "library_file": "library/sprites/a4718f902ac97e7f.png",
+  "games": [
+   "RIFFT_RIDE_RZ"
+  ],
+  "names": [
+   "ramp_01_quarter"
+  ],
+  "w": 48,
+  "h": 48,
+  "role": "PLACEHOLDER"
+ },
+ {
+  "file": "crowd_extreme.png",
+  "sha256": "c84a63a5f2eea2f5595df657b2b30ebae0529244bdef1eed9e516ebfefda3c22",
+  "library_file": "library/sprites/c84a63a5f2eea2f5.png",
+  "games": [
+   "WIR_Extreme_Football"
+  ],
+  "names": [
+   "crowd.src"
+  ],
+  "w": 900,
+  "h": 190,
+  "role": "PLACEHOLDER"
+ }
+]
