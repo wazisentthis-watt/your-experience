@@ -288,14 +288,14 @@
       if (B.st === 'tele') { cx.strokeStyle = 'rgba(255,170,60,' + (.4 + .5 * Math.sin(t * 20)) + ')'; cx.lineWidth = 3; cx.beginPath(); cx.ellipse(x, y, 28 + (1 - B.stT / B.def.cycle.tele) * 18, 12, 0, 0, 7); cx.stroke(); count('boss_tele_drawn'); }
       if (B.charge && B.charge.tele > 0) { cx.strokeStyle = 'rgba(255,120,90,.8)'; cx.setLineDash([6, 4]); cx.lineWidth = 3; cx.beginPath(); cx.moveTo(x, y - 20); cx.lineTo(x + Math.cos(B.charge.a) * 140, y - 20 + Math.sin(B.charge.a) * 140); cx.stroke(); cx.setLineDash([]); count('boss_tele_drawn'); }
       cx.fillStyle = 'rgba(0,0,0,.35)'; cx.beginPath(); cx.ellipse(x, y, 26, 9, 0, 0, 7); cx.fill();
-      var fl = B.hitT > 0;
-      if (!g) { cx.fillStyle = fl ? '#fff' : '#3d4048'; cx.fillRect(x - 20, y - 64, 40, 58); cx.fillStyle = '#6b6f79'; cx.beginPath(); cx.arc(x, y - 72, 12, 0, 7); cx.fill();
+      var fl = B.hitT > 0, art = !!(window.YOUR_BOSS_ART && YOUR_BOSS_ART.draw(cx, B, x, y, t));   // your/art/your_boss_art.js; false = keep the placeholder
+      if (art) count('boss_art_' + B.id); else if (!g) { cx.fillStyle = fl ? '#fff' : '#3d4048'; cx.fillRect(x - 20, y - 64, 40, 58); cx.fillStyle = '#6b6f79'; cx.beginPath(); cx.arc(x, y - 72, 12, 0, 7); cx.fill();
         cx.strokeStyle = B.st === 'braced' ? '#ffb24a' : '#a86a20'; cx.lineWidth = 4; cx.strokeRect(x - 23, y - 52, 46, 26); cx.beginPath(); cx.moveTo(x - 20, y - 60); cx.lineTo(x + 20, y - 30); cx.moveTo(x + 20, y - 60); cx.lineTo(x - 20, y - 30); cx.stroke();
         cx.fillStyle = '#23252a'; cx.fillRect(x - 28, y - 8, 56, 10); }
       else { cx.translate(x, y - 40); cx.fillStyle = fl ? '#fff' : 'rgba(190,225,255,.85)'; cx.strokeStyle = '#e8f6ff'; cx.lineWidth = 2; cx.beginPath(); cx.moveTo(0, -36); cx.lineTo(18, -6); cx.lineTo(10, 34); cx.lineTo(-10, 34); cx.lineTo(-18, -6); cx.closePath(); cx.fill(); cx.stroke();
         cx.strokeStyle = 'rgba(120,160,200,.9)'; cx.lineWidth = 1; for (var c = 0; c < Math.floor((100 - B.stab) / 12); c++) { cx.beginPath(); cx.moveTo(-12 + c * 4, -20 + c * 6); cx.lineTo(8 - c * 3, -4 + c * 7); cx.stroke(); } cx.translate(-x, -(y - 40)); }
       cx.restore(); count('boss_drawn_' + B.id);
-      cx.save(); cx.font = '800 8px JetBrains Mono, monospace'; cx.textAlign = 'center'; var lab = B.def.name + ' · placeholder art', w = cx.measureText(lab).width + 8;
+      cx.save(); cx.font = '800 8px JetBrains Mono, monospace'; cx.textAlign = 'center'; var lab = B.def.name + (art ? '' : ' · placeholder art'), w = cx.measureText(lab).width + 8;
       cx.fillStyle = 'rgba(8,10,24,.8)'; cx.fillRect(x - w / 2, y - 104, w, 11); cx.fillStyle = '#ff9a6a'; cx.fillText(lab, x, y - 95.5);
       cx.fillStyle = '#0009'; cx.fillRect(x - 30, y - 90, 60, 5); cx.fillStyle = B.st === 'braced' || B.st === 'tele' ? '#f99662' : '#92e9c8'; cx.fillRect(x - 30, y - 90, 60 * B.stab / 100, 5); cx.restore(); }
     function drawMarker(x, y, col, glyph, label) { var cx = X.cx, t = performance.now() / 1000, X0 = x * T, Y0 = y * T + 6;

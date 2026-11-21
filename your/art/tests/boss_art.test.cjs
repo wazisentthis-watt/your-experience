@@ -1,0 +1,32 @@
+// node your/art/tests/boss_art.test.cjs · BALLAST + GLASSJAW sprite layer (your/art/your_boss_art.js) and its v23 hook. Drafted by WIR Recovery for owner review.
+const fs = require('fs'), path = require('path'), vm = require('vm');
+const ROOT = path.join(__dirname, '..', '..', '..'); let pass = 0, fail = 0;
+const ok = (c, m) => { if (c) { pass++; console.log('ok - ' + m); } else { fail++; console.log('FAIL - ' + m); } };
+const imgs = []; function Image() { imgs.push(this); }
+const calls = []; const cx = { save() { }, restore() { }, translate() { }, scale(a) { calls.push(['scale', a]); }, drawImage(...a) { calls.push(['img', a]); } };
+const win = { WIR_GAME: { G: { px: 2, py: 5 } } }; const ctx = vm.createContext({ window: win, Image, Math, console });
+vm.runInContext(fs.readFileSync(path.join(ROOT, 'your/art/your_boss_art.js'), 'utf8'), ctx); const A = win.YOUR_BOSS_ART;
+ok(A && typeof A.draw === 'function', 'YOUR_BOSS_ART.draw exists');
+ok(imgs.length === 2 && imgs.every(i => /^your\/assets\/villains\/bosses\/(ballast|glassjaw)_160\.webp$/.test(i.src)), 'loads the two boss sheets by relative path');
+for (const i of imgs) ok(fs.existsSync(path.join(ROOT, i.src)), 'asset exists: ' + i.src);
+const B = (o) => Object.assign({ id: 'ballast', x: 6, y: 5, st: 'free', hitT: 0, done: false, waves: [], charge: null }, o);
+ok(A.draw(cx, B(), 0, 0, 0) === false, 'not loaded yet → false (v23 keeps the placeholder)');
+imgs.forEach(i => i.onload()); ok(A.ready.ballast && A.ready.glassjaw, 'onload marks both ready');
+ok(A.draw(cx, B({ id: 'sikee' }), 0, 0, 0) === false, 'unknown boss id → false');
+const F = (o, t) => JSON.stringify(A.frameFor(B(o), t || 0));
+ok(F({ st: 'tele' }) === '[1,0]', 'tele → windup'); ok(F({ st: 'braced' }) === '[1,0]', 'braced, no wave → windup'); ok(F({ st: 'braced', waves: [{}] }) === '[1,1]', 'braced with a wave → strike');
+ok(F({ st: 'atk' }) === '[1,1]', 'atk → strike'); ok(F({ hitT: .2 }) === '[1,2]', 'hit → hit'); ok(F({ st: 'stun' }) === '[1,3]', 'stun → down'); ok(F({ done: true }) === '[1,3]', 'done → down');
+ok(F({ id: 'glassjaw', charge: { a: 0, tele: .3 } }) === '[1,0]', 'glassjaw charge telegraph → windup'); ok(F({ id: 'glassjaw', charge: { a: 0, tele: 0 } }) === '[1,1]', 'glassjaw charging → strike');
+ok(['[0,0]', '[0,1]'].includes(F({}, .2)), 'free + still → idle');
+const mv = B({}); A.frameFor(mv, 1); mv.x += .1; ok(['[0,2]', '[0,3]'].includes(JSON.stringify(A.frameFor(mv, 1.05))), 'free + moving → walk');
+calls.length = 0; ok(A.draw(cx, B({ x: 1 }), 50, 80, 0) === true && calls.some(c => c[0] === 'img'), 'draws when ready');
+ok(!calls.some(c => c[0] === 'scale'), 'hero to the right → faces right (no mirror)');
+calls.length = 0; A.draw(cx, B({ x: 9 }), 50, 80, 0); ok(calls.some(c => c[0] === 'scale' && c[1] === -1), 'hero to the left → mirrored');
+const bad = { save() { throw new Error('x'); } }; ok(A.draw(bad, B(), 0, 0, 0) === false, 'a draw error returns false instead of breaking the v23 loop');
+const v23 = fs.readFileSync(path.join(ROOT, 'your/v23/your_v23.js'), 'utf8');
+ok(/art = !!\(window\.YOUR_BOSS_ART && YOUR_BOSS_ART\.draw\(cx, B, x, y, t\)\)/.test(v23), 'v23 drawBoss asks the art layer first');
+ok(/if \(art\) count\('boss_art_' \+ B\.id\); else if \(!g\)/.test(v23), 'v23 placeholder body only when the art did not draw');
+ok(v23.includes("(art ? '' : ' · placeholder art')"), 'placeholder label only when the placeholder is shown');
+const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+ok(html.indexOf('your/art/your_boss_art.js') > html.indexOf('your/v23/your_v23.js'), 'index.html loads the art after v23');
+console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);
