@@ -22,6 +22,7 @@
     REG[rec.id] = deepFreeze(copy(rec)); return v;
   };
   R.get = function (id) { return REG[id] || null; };
+  R.unregister = function (id) { var p = REG[id]; if (!p || p.tier === 'core') return false; delete REG[id]; ORDER.splice(ORDER.indexOf(id), 1); return true; };   // U2: player powers only
   R.list = function (tier) { return ORDER.map(function (id) { return REG[id]; }).filter(function (p) { return !tier || p.tier === tier; }); };
   R.validate = function (rec, opts) { return SC.validate(rec, opts); };
   R.kit = KIT ? { id: KIT.id, name: KIT.name, resources: KIT.resources, chain: KIT.chain } : null;
