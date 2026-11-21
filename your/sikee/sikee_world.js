@@ -31,8 +31,11 @@
   // every UPKEEP_S seconds the city bills $UPKEEP_FEE per unrepaired wreck (real time, see note in PR).
   const WRECK_NEAR = 0.8, WRECK_SLOW = 0.55, UPKEEP_S = 60, UPKEEP_FEE = 5;
 
+  // Fight moves: punch (J) builds charge; blast (B) spends it for a big hit at range.
+  const PUNCH_CHARGE = 15, CHARGE_MAX = 100, BLAST_COST = 40, BLAST_DMG = 30, BLAST_CD = 1.0, START_CHARGE = 20;
+
   const R = { wanderers: [], battle: null, dist: 0, cool: 0, lastX: undefined, lastY: undefined, lastMap: null,
-    hp: HOME_HP, mella: false, hud: null, rolled: 0 };
+    hp: HOME_HP, mella: false, hud: null, rolled: 0, charge: 0, blastCool: 0 };
 
   // ---- saved state (lives in GM().S.sikee, so GM().save() keeps it) ----
   function st() {
@@ -178,18 +181,31 @@
     }
   }
   function startBattle(w) {
+    if (R.battle) return;
+    // Contact always brings MELLA up, so a fight can start on any street or at home without a menu step.
+    R.mella = true; R.charge = START_CHARGE; R.blastCool = 0;
     R.battle = { foe: w, strike: 0, foeCool: 1, phase: 1, log: [] };
     for (const k in GM().G.keys) GM().G.keys[k] = 0;
     GM().G.path = []; GM().G.go = null;
-    const hint = R.mella ? 'Strike with J.' : 'Enter MELLA (M) to fight, or run (X).';
-    logLine(w.def.name + ' — ' + w.def.title + '. ' + hint);
+    logLine(w.def.name + ' — ' + w.def.title + '. MELLA is up. Punch (J), blast (B), or run (X).');
     showBattle(true);
+  }
+  // Home intrusion: a villain comes out of the CPU while you are standing in the house.
+  function homeIntruder() {
+    if (R.battle || R.cool > 0) return false;
+    const pos = freeTileNear(GM().G.px, GM().G.py, 1.2, 2.2); if (!pos) return false;
+    const def = VILLAINS[Math.floor(Math.random() * VILLAINS.length)];
+    const w = makeWanderer(def, pos);
+    GM().toast(def.name + ' came out of your CPU.', 'bad');
+    startBattle(w);
+    return true;
   }
   function logLine(t) { if (!R.battle) return; R.battle.log.push(t); if (R.battle.log.length > 3) R.battle.log.shift(); }
 
   function battleTick(dt) {
     const b = R.battle, f = b.foe;
     b.strike = Math.max(0, b.strike - dt);
+    R.blastCool = Math.max(0, R.blastCool - dt);
     if (f.boss) {
       const frac = f.hp / f.max, ph = frac <= .33 ? 3 : frac <= .66 ? 2 : 1;
       if (ph !== b.phase) { b.phase = ph; logLine('Sikee shifts into phase ' + ph + '.'); }
@@ -206,7 +222,18 @@
     const b = R.battle; if (!b) return;
     if (!R.mella) { logLine('Enter MELLA (M) first.'); updateBattleUI(); return; }
     if (b.strike > 0) return;
-    b.strike = HIT_CD; b.foe.hp -= MELLA_HIT; logLine('You hit ' + b.foe.def.name + ' for ' + MELLA_HIT + '.');
+    b.strike = HIT_CD; b.foe.hp -= MELLA_HIT; R.charge = Math.min(CHARGE_MAX, R.charge + PUNCH_CHARGE);
+    logLine('You punch ' + b.foe.def.name + ' for ' + MELLA_HIT + '.');
+    if (b.foe.hp <= 0) win();
+    updateBattleUI();
+  }
+  function blast() {
+    const b = R.battle; if (!b) return;
+    if (!R.mella) { logLine('MELLA is down.'); updateBattleUI(); return; }
+    if (R.blastCool > 0) return;
+    if (R.charge < BLAST_COST) { logLine('Not enough charge. Punch to build it.'); updateBattleUI(); return; }
+    R.charge -= BLAST_COST; R.blastCool = BLAST_CD;
+    b.foe.hp -= BLAST_DMG; logLine('You blast ' + b.foe.def.name + ' for ' + BLAST_DMG + '.');
     if (b.foe.hp <= 0) win();
     updateBattleUI();
   }
@@ -294,8 +321,11 @@
     if (R.cool > 0) R.cool -= dt;
 
     // house: electronics can send a villain out while you are away
-    if (m.id !== 'HOME' && Math.random() < dt / 900) {
-      if (s.kawTrip) s.kawBlocked++; else { s.intrusions++; GM().toast('Something is coming out of your CPU at home.', 'bad'); GM().save(); }
+    if (Math.random() < dt / 900) {
+      if (m.id === 'HOME') {
+        // already inside: the villain fights you here, unless KAW is home on guard
+        if (s.kawTrip) s.kawBlocked++; else homeIntruder();
+      } else if (s.kawTrip) s.kawBlocked++; else { s.intrusions++; GM().toast('Something is coming out of your CPU at home.', 'bad'); GM().save(); }
     }
 
     // distance walked on the road: rare rolls for a villain, rarer for Sikee
@@ -462,7 +492,8 @@
       '.sk-box{background:#1b1420;border:2px solid #f3a93d;border-radius:14px;padding:16px;width:min(92vw,420px)}' +
       '.sk-bar{height:10px;background:#2a2236;border-radius:6px;overflow:hidden;margin:4px 0 10px}.sk-bar i{display:block;height:100%;background:#ff7d2a;width:100%}' +
       '.sk-me i{background:#76e086}.sk-log{min-height:54px;font-size:13px;line-height:1.4;margin:8px 0}.sk-btns{display:flex;gap:8px;flex-wrap:wrap}.sk-btns button{flex:1;min-width:110px;padding:12px;font-size:13px}' +
-      '#sikeeHud .mella{border-color:#ff9ad5;color:#ff9ad5}';
+      '#sikeeHud .mella{border-color:#ff9ad5;color:#ff9ad5}' +
+      '.sk-ch i{background:#55ddff}';
     document.head.appendChild(css);
 
     const hud = document.createElement('div'); hud.id = 'sikeeHud';
@@ -474,10 +505,12 @@
     const bat = document.createElement('div'); bat.id = 'sikeeBattle'; bat.hidden = true;
     bat.innerHTML = '<div class="sk-box"><div><b id="skFoe"></b> <span id="skTitle" style="opacity:.7;font-size:12px"></span></div>' +
       '<div class="sk-bar"><i id="skFoeBar"></i></div><div>You</div><div class="sk-bar sk-me"><i id="skMeBar"></i></div>' +
-      '<div class="sk-log" id="skLog"></div><div class="sk-btns">' +
-      '<button type="button" id="skStrike">Strike (J)</button><button type="button" id="skMella2">Mella (M)</button><button type="button" id="skRun">Run (X)</button></div></div>';
+      '<div class="sk-log" id="skLog"></div>' +
+      '<div class="sk-bar sk-ch"><i id="skChargeBar"></i></div><div class="sk-btns">' +
+      '<button type="button" id="skStrike">Punch (J)</button><button type="button" id="skBlast">Blast (B)</button><button type="button" id="skMella2">Mella (M)</button><button type="button" id="skRun">Run (X)</button></div></div>';
     document.body.appendChild(bat);
     bat.querySelector('#skStrike').onclick = strike;
+    bat.querySelector('#skBlast').onclick = blast;
     bat.querySelector('#skMella2').onclick = toggleMella;
     bat.querySelector('#skRun').onclick = run;
     R.hud = { hud, bat };
@@ -494,8 +527,13 @@
     q('skLog').textContent = b.log.join(' · ');
     q('skMella2').textContent = R.mella ? 'Mella on (M)' : 'Mella off (M)';
     q('skStrike').disabled = !R.mella;
+    q('skChargeBar').style.width = Math.max(0, 100 * R.charge / CHARGE_MAX) + '%';
+    q('skBlast').disabled = !R.mella || R.charge < BLAST_COST || R.blastCool > 0;
+    q('skBlast').textContent = R.blastCool > 0 ? 'Blast (B) …' : 'Blast (B) · ' + Math.floor(R.charge) + '%';
   }
   function toggleMella() {
+    // A fight always keeps MELLA up, so an accidental M cannot disarm you mid-fight.
+    if (R.battle && R.mella) { logLine('MELLA stays up until the fight ends.'); updateBattleUI(); return; }
     R.mella = !R.mella;
     GM().toast(R.mella ? 'MELLA on. Your strikes land.' : 'MELLA off.', R.mella ? 'gold' : 'dim');
     if (R.hud) {
@@ -510,6 +548,7 @@
     const k = e.key.toLowerCase();
     if (R.battle) {
       if (k === 'j') { strike(); e.preventDefault(); }
+      else if (k === 'b') { blast(); e.preventDefault(); }
       else if (k === 'm') { toggleMella(); e.preventDefault(); }
       else if (k === 'x') { run(); e.preventDefault(); }
       else if (k === ' ' || k === 'e' || k === 'r' || k.startsWith('arrow') || 'wasd'.includes(k)) e.preventDefault();
@@ -525,6 +564,6 @@
     tick, enterMap: onEnterMap, drawList,
     blocking: () => !!R.battle,
     wreckSlow,
-    debug: { R, st, plantStage, spawnRoadVillain, spawnSikeeOnRoad, startBattle, commitCrime, wreckCount, startRepair, tickUpkeep },
+    debug: { R, st, plantStage, spawnRoadVillain, spawnSikeeOnRoad, startBattle, homeIntruder, strike, blast, commitCrime, wreckCount, startRepair, tickUpkeep },
   };
 })();
