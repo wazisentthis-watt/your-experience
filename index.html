@@ -1425,6 +1425,7 @@ document.documentElement.style.setProperty('--food',"url('data:image/png;base64,
 <script src="your/v24/wir_kaw_living_brain.js"></script>
 <script src="your/v24/your_v24.js"></script>
 <script src="your/sikee/sikee_world.js"></script>
+<script src="your/modules/your_nimbus.js"></script>
 <script src="your/muse/your_muse.js"></script>
 <script>
 (() => {
@@ -3616,12 +3617,17 @@ addEventListener('keydown', e => {
   if (k === 'r' && !G.sheet && !G.phone && !G.fb) cycleRide();
 });
 addEventListener('keyup', e => { G.keys[e.key.toLowerCase()] = 0; });
-function interactNear() {
-  if (S.busy) return;
+function nearestUse() {
+  if (!S || S.busy) return null;
   let best = null, bd = 1.6;
   for (const n of G.npcs) if (n.vis) { const d = Math.hypot(n.x - G.px, n.y - G.py); if (d < bd) { bd = d; best = () => openNpc(n); } }
   for (const o of G.map.objs) { if (o.decor || !furnOn(o)) continue; const u = useSpot(o); if (!u) continue; const d = Math.hypot(u[0] - G.px, u[1] - G.py); if (d < bd) { bd = d; best = () => { G.curBldg = o; openObj(o); }; } }
   if (G.map.id === 'HOME') { const d = Math.hypot(G.dog.x - G.px, G.dog.y - G.py); if (d < bd) best = openDog; }
+  return best;
+}
+function interactNear() {
+  if (S.busy) return;
+  const best = nearestUse();
   if (best) best(); else toast('Nothing close enough. Walk up to something.');
 }
 $('#busyStop').onclick = stopBusy;
@@ -3697,7 +3703,7 @@ $('#labEnd').onclick = () => {
 };
 
 /* bridge for your/sikee/sikee_world.js: reads game state at call time */
-window.WIR_GAME = { get S() { return S; }, get G() { return G; }, get cx() { return cx; }, get T() { return T; }, get MG() { return MG; },
+window.WIR_GAME = { nearestUse: () => nearestUse(), get S() { return S; }, get G() { return G; }, get cx() { return cx; }, get T() { return T; }, get MG() { return MG; },
   walkable: (...a) => walkable(...a), toast: (...a) => toast(...a), save: () => save(), enterMap: (...a) => enterMap(...a) };
 
 /* ---- the loop ---- */
