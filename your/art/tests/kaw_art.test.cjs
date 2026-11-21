@@ -1,0 +1,40 @@
+// node your/art/tests/kaw_art.test.cjs · Veyru art layer (your/art/your_kaw_art.js) and its v22 hook. Drafted by WIR Recovery for owner review.
+const fs = require('fs'), path = require('path'), vm = require('vm');
+const ROOT = path.join(__dirname, '..', '..', '..'); let pass = 0, fail = 0;
+const ok = (c, m) => { if (c) { pass++; console.log('ok - ' + m); } else { fail++; console.log('FAIL - ' + m); } };
+const imgs = []; function Image() { imgs.push(this); }
+let mood = 'content', brainWrites = 0; const state = new Proxy({ bond: 40 }, { set() { brainWrites++; return true; } });
+const KC = { art: { face: 'your/assets/kaw/veyru/veyru_idle_64.png', idle: 'x' } }; let prevInstalled = 0, drawFn = null;
+const win = { YOUR_V20_INSTALL: () => { prevInstalled++; }, YOUR_V22_CONFIG: { kaw: KC }, YOUR_V22: { calmFx: 0 }, WIRKAWLivingBrain: { moodOf: () => mood }, YOUR_V24: { state: () => state } };
+const ctx = vm.createContext({ window: win, Image, Math, Date, console, performance: { now: () => 1000 } });
+vm.runInContext(fs.readFileSync(path.join(ROOT, 'your/art/your_kaw_art.js'), 'utf8'), ctx); const A = win.YOUR_KAW_ART;
+ok(A && typeof A.draw === 'function', 'YOUR_KAW_ART.draw exists');
+ok(imgs.length === 6, 'loads walk sheet, fx sheet and 4 portraits'); for (const i of imgs) ok(fs.existsSync(path.join(ROOT, i.src)), 'asset exists: ' + i.src);
+const calls = []; const cx = { save() { }, restore() { }, translate() { }, beginPath() { }, ellipse() { }, fill() { }, scale(a) { calls.push(['scale', a]); }, drawImage(...a) { calls.push(['img', a]); } };
+ok(A.draw(cx, { moving: false }, 0, 0, 48) === false, 'not loaded → false (v22 keeps its old body)');
+imgs.forEach(i => i.onload());
+const F = (k, m) => A.frameFor(Object.assign({ ph: 0 }, k), m || 'restless', 0);
+ok(F({ moving: true, dir: 'down' }).row === 0, 'walk down → front row'); ok(F({ moving: true, dir: 'up' }).row === 3, 'walk up → back row');
+ok(F({ moving: true, dir: 'right' }).row === 1 && !F({ moving: true, dir: 'right' }).flip, 'walk right → side row, not mirrored');
+ok(F({ moving: true, dir: 'left' }).row === 2 && F({ moving: true, dir: 'left' }).flip === true, 'walk left → second side row, mirrored');
+ok(new Set([0, 1, 2, 3].map(i => F({ moving: true, dir: 'down', ph: i / .6 + .01 }).col)).size === 4, 'walk uses all 4 frames');
+ok(F({ moving: false }, 'content').col === 2 && F({ moving: false }, 'anxious').col === 1 && F({ moving: false }, 'restless').col === 0, 'idle follows mood (content sit / anxious alert / restless front)');
+ok(F({ moving: false, face: 'left' }, 'anxious').flip === true && F({ moving: false, face: 'left' }, 'restless').flip === false, 'side idles face Veyru\'s facing; front idle never mirrored');
+mood = 'playful'; ok(A.moodNow() === 'playful', 'mood comes from WIRKAWLivingBrain.moodOf(YOUR_V24.state())');
+ok(A.faceFor('playful').endsWith('veyru_happy.webp') && A.faceFor('anxious').endsWith('veyru_alert.webp') && A.faceFor('tired').endsWith('veyru_calm.webp') && A.faceFor('hungry').endsWith('veyru_curious.webp'), 'mood → portrait table');
+calls.length = 0; ok(A.draw(cx, { moving: true, dir: 'left', ph: 0 }, 10, 10, 48) === true && calls.some(c => c[0] === 'img'), 'draws once loaded');
+win.YOUR_V22.calmFx = .8; calls.length = 0; A.draw(cx, { moving: false }, 0, 0, 48); ok(calls.filter(c => c[0] === 'img').length === 2, 'calm effect adds the calm ring frame'); win.YOUR_V22.calmFx = 0;
+// install: chain + portrait getter
+let dp = null; win.YOUR_V20_INSTALL({ T: 32, cx, fn: { drawPlayer: () => () => { } }, set(n, f) { if (n === 'drawPlayer') dp = f; } });
+ok(prevInstalled === 1 && typeof dp === 'function', 'install chain: previous layer runs first, drawPlayer wrapped');
+ok(KC.art.face.endsWith('veyru_happy.webp'), 'KC.art.face now returns the mood portrait');
+win.YOUR_V23 = { fx: [{ s: 'VEYRU · RAINROOT SNARE', x: 3, y: 2, life: .6 }, { s: 'OTHER', x: 0, y: 0, life: 1 }] }; calls.length = 0; dp(0);
+ok(calls.filter(c => c[0] === 'img').length === 1 && A.stats.snare === 1, 'snare art drawn once, only for the snare text');
+ok(brainWrites === 0, 'never writes Veyru\'s brain state');
+const v22 = fs.readFileSync(path.join(ROOT, 'your/v22/your_v22.js'), 'utf8');
+ok(v22.includes('var art = !!(window.YOUR_KAW_ART && YOUR_KAW_ART.draw(cx, kaw, X0, Y0, size));') && v22.includes("if (!art) { cx.save(); cx.translate(X0, Y0);"), 'v22 drawKaw asks the art layer first and keeps the old body as fallback');
+ok(v22.includes("(vertical && !art ? ' (temp side-view art)' : '')"), '"temp side-view art" tag only when the old art is shown');
+ok(v22.includes("(window.YOUR_KAW_ART && YOUR_KAW_ART.ready.walk ? '.' : '. Temporary side-view art; 4-direction sheet still to come.')"), 'Veyru sheet drops the "temporary side-view art" note only when the 4-direction art loaded');
+const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+ok(html.indexOf('your/art/your_kaw_art.js') > html.indexOf('your/v24/your_v24.js') && html.indexOf('your/art/your_kaw_art.js') < html.indexOf('your/sikee/sikee_world.js'), 'index.html loads it after the v24 brain');
+console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);
