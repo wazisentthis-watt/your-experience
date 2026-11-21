@@ -10,13 +10,8 @@ const url = 'file://' + path.resolve(repo, 'index.html');
   for (const vp of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
     const page = await browser.newPage({ viewport: vp });
     const errs = []; page.on('pageerror', e => errs.push(e.message));
-    await page.addInitScript(() => {
-      let orig = null;
-      Object.defineProperty(window, 'YOUR_V20_INSTALL', { configurable: true,
-        get() { return function (obj) { window.__Y = obj; return orig ? orig(obj) : undefined; }; }, set(v) { orig = v; } });
-    });
     await page.goto(url, { waitUntil: 'load' }); await page.waitForTimeout(400);
-    await page.evaluate(() => { const Y = window.__Y; Y.fn.newGame()(); Y.S.home = 'house'; });
+    await page.evaluate(() => { window.__Y = window.YOUR_V20.X; const Y = window.__Y; Y.fn.newGame()(); Y.S.home = 'house'; });
     await page.waitForTimeout(300);
     const ids = await page.evaluate(() => Object.keys(window.__Y.MAPS));
     const w = vp.width;
