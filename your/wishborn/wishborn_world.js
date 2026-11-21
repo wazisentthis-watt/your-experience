@@ -22,11 +22,13 @@
   const FEED_TXT = { berry: 'Berry (Root)', water: 'Water (Core)', crystal: 'Crystal (Crown)' };
   const REALM_LAW = { meadow: 'Meadow Law: observe first, never corner.', woods: 'Woods Law: keep the canopy quiet.',
     shore: 'Shore Law: never pull from the water.', highlands: 'Highland Law: no chasing on ledges.' };
+  const listeners = [];
+  const emit = (type, d) => { for (const f of listeners) { try { f(type, d || {}); } catch (e) { } } };
   const R = { wilds: [], map: null, spawnT: 3, uid: 1, panel: null, hud: null, followers: [], hx: 0, hy: 0, hint: null };
 
   function st() {
     const S = GM().S; if (!S) return null;
-    if (!S.wishborn) S.wishborn = { items: { berry: 3, water: 2, crystal: 1 }, accord: [], log: [], species: {}, rescue: { rep: 0, credits: 0, done: 0, wrong: 0 }, parted: 0 };
+    if (!S.wishborn) S.wishborn = { id: Math.random().toString(36).slice(2, 10), items: { berry: 3, water: 2, crystal: 1 }, accord: [], log: [], species: {}, rescue: { rep: 0, credits: 0, done: 0, wrong: 0 }, parted: 0 };
     return S.wishborn;
   }
   const rec = id => { const s = st(); return s.species[id] || (s.species[id] = { seen: 0, observed: 0, offers: 0, refusals: 0, invites: 0, declined: 0, joined: 0, faced: 0, lvl: 0 }); };
@@ -92,7 +94,7 @@
     }
     if (w.st === 'charge') { moveTo(w, G.px, G.py, t.spd * 2.2, dt); if (w.stT <= 0 || dh < .7) { setSt(w, 'wander', 3); w.fear = Math.min(100, w.fear + 8); if (dh < .7) toast(w.sp.name + ' shoved past you. Back off and let it settle.'); } return; }
     // watched: stand still nearby and it records you as calm
-    if (dh < 4 && !moving && w.st !== 'flee') { w.watch += dt; if (w.watch > 2.2 && rec(w.sp.id).observed < 3) { rec(w.sp.id).observed++; w.watch = 0; w.trust = Math.min(100, w.trust + 6); w.emote = '·'; w.emoteT = 1.2; if (rec(w.sp.id).observed === 1) { toast('Observed: ' + w.sp.name + '. New field note.'); rec(w.sp.id).lvl = Math.max(rec(w.sp.id).lvl, 1); } } }
+    if (dh < 4 && !moving && w.st !== 'flee') { w.watch += dt; if (w.watch > 2.2 && rec(w.sp.id).observed < 3) { rec(w.sp.id).observed++; w.watch = 0; w.trust = Math.min(100, w.trust + 6); w.emote = '·'; w.emoteT = 1.2; if (rec(w.sp.id).observed === 1) { toast('Observed: ' + w.sp.name + '. New field note.'); rec(w.sp.id).lvl = Math.max(rec(w.sp.id).lvl, 1); emit('observed', { sp: w.sp, n: rec(w.sp.id).observed }); } } }
     else w.watch = Math.max(0, w.watch - dt);
     if (w.st === 'held') { w.moving = false; return; }
     if (w.stT <= 0) { const pickS = t.rest[Math.floor(Math.random() * t.rest.length)]; setSt(w, pickS, rnd(2, 6)); if (pickS === 'wander' || pickS === 'patrol' || pickS === 'dash' || pickS === 'circle') { const p = pickSpot(w, pickS === 'dash' ? 6 : 3.5); w.tx = p[0]; w.ty = p[1]; } }
@@ -132,7 +134,7 @@
     // an Accord follower that has not been fed for a long while may part ways — it was never captured
     R.partT = (R.partT || 0) + dt; if (R.partT > 240) { R.partT = 0; for (const a of s.accord.slice()) if (Date.now() - (a.fedAt || 0) > HUNGRY_MS && Math.random() < .3) part(a.sp, 'nobody shared food with it for a long while'); }
   }
-  function part(id, why) { const s = st(), sp = SP.find(x => x.id === id); s.accord = s.accord.filter(a => a.sp !== id); R.followers = R.followers.filter(f => f.sp.id !== id); s.parted++; if (sp) { log(sp.name + ' went its own way — ' + why + '.'); toast(sp.name + ' went its own way.', 'dim'); } GM().save(); render(); }
+  function part(id, why) { const s = st(), sp = SP.find(x => x.id === id); s.accord = s.accord.filter(a => a.sp !== id); R.followers = R.followers.filter(f => f.sp.id !== id); s.parted++; if (sp) { emit('parted', { sp, why }); log(sp.name + ' went its own way — ' + why + '.'); toast(sp.name + ' went its own way.', 'dim'); } GM().save(); render(); }
   function whistle() { R.followers.forEach(f => { f.st = 'follow'; f.emote = '♪'; f.emoteT = 1.2; const G = GM().G; if (H(G.px - f.x, G.py - f.y) > 4) { f.x = G.px - .8; f.y = G.py + .8; } }); toast(R.followers.length ? 'You whistle. Your Accord comes in.' : 'Nobody is walking with you yet.'); }
 
   // ---- the 4-beat bond ----
@@ -154,7 +156,7 @@
     r.invites++;
     if (p < .55 || Math.random() > p) { r.declined++; w.offers = 1; setSt(w, 'wander', 3); w.emote = '…'; w.emoteT = 2; log(w.sp.name + ' declined to walk with you (pFriendly ' + p.toFixed(2) + ').'); toast(w.sp.name + ' considers it… and stays. Maybe another day.'); GM().save(); R.panel = null; render(); return; }
     r.joined++; r.lvl = Math.max(3, r.lvl); s.accord.push({ sp: w.sp.id, since: new Date().toISOString(), fedAt: Date.now() }); w.gone = true; R.wilds = R.wilds.filter(x => x !== w);
-    log(w.sp.name + ' chose to walk with you. It can leave whenever it wants.'); toast(w.sp.name + ' chose to walk with you.', 'gold'); followerObjs(); GM().save(); R.panel = null; render();
+    log(w.sp.name + ' chose to walk with you. It can leave whenever it wants.'); emit('joined', { sp: w.sp, n: r.joined }); toast(w.sp.name + ' chose to walk with you.', 'gold'); followerObjs(); GM().save(); R.panel = null; render();
   }
   function feedFollower(id, item) {
     const s = st(), a = s.accord.find(x => x.sp === id), sp = SP.find(x => x.id === id); if (!a || !s.items[item]) return;
@@ -175,7 +177,7 @@
       const s = st(), needsCare = w.health < 65, ok = needsCare ? place === 'care' : place === 'release';
       if (ok) { s.rescue.rep += 6; s.rescue.credits += 120; s.rescue.done++; GM().S.cash = (GM().S.cash || 0) + 120; toast((needsCare ? 'Brought to care' : 'Released') + '. Rep +6 · $120.', 'gold'); w.rescued = true; w.hurt = false; w.health = needsCare ? 100 : w.health; }
       else { s.rescue.rep -= 9; s.rescue.credits += 20; s.rescue.wrong++; GM().S.cash = (GM().S.cash || 0) + 20; toast('Wrong place for its condition. Rep -9 · $20.', 'bad'); w.rescued = true; }
-      log('Rescue: ' + w.sp.name + ' → ' + place + (ok ? ' (correct)' : ' (wrong)')); w.held = false; setSt(w, 'wander', 2); w.fear = 30; w.trust = Math.max(w.trust, 40);
+      log('Rescue: ' + w.sp.name + ' → ' + place + (ok ? ' (correct)' : ' (wrong)')); emit('rescue', { sp: w.sp, place, ok, needsCare }); w.held = false; setSt(w, 'wander', 2); w.fear = 30; w.trust = Math.max(w.trust, 40);
       if (needsCare) { R.wilds = R.wilds.filter(x => x !== w); } GM().save(); R.panel = null; render();
     },
   };
@@ -255,6 +257,6 @@
   }
   function enterMap() { R.map = null; R.panel = null; if (R.panelEl) render(); }
 
-  window.WISHBORN = { tick, drawList, use, enterMap, state: st, species: SP, get wilds() { return R.wilds; }, get followers() { return R.followers; },
+  window.WISHBORN = { on: f => listeners.push(f), tick, drawList, use, enterMap, state: st, species: SP, get wilds() { return R.wilds; }, get followers() { return R.followers; },
     _t: { thinkWild, offer, invite, rescue, pFriendly, beat, spawn, part, feedFollower, whistle, R, rec, FEED, TEMP, followerObjs } };
 })();

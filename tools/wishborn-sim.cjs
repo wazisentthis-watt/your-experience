@@ -71,6 +71,17 @@ const url = 'file://' + path.resolve(process.argv[2] || '.', 'index.html');
   check('correct placement: rep +6, $120', rsc.rightRep === 6 && rsc.rightCash === 120, rsc);
   check('wrong placement: rep -9, $20', rsc.wrongRep === -9 && rsc.wrongCash === 20, rsc);
 
+  // Passport: events from the bond/rescue land in the shared wir.passport/1 ledger, idempotently
+  const pp = await E(async () => { const PP = window.WIR_PASSPORT, T = WISHBORN._t, G = WIR_GAME.G, s = WISHBORN.state(); const o = { lib: !!PP };
+    PP.init(); const r = Math.random; Math.random = () => 0;
+    const sp = WISHBORN.species.find(x => x.beh === 'grazer' && !s.accord.some(a => a.sp === x.id)); const w = T.spawn(sp, [G.px + 3, G.py], false); T.rec(sp.id).lvl = 3; w.offers = 2; w.trust = 90; w.fear = 0; s.accord = []; T.invite(w); Math.random = r;
+    WISHBORN_PASSPORT.flush(); o.outbox = s.outbox.length; o.err = s.passportError || null; o.ok = s.passportOk || 0;
+    const st = PP.state(); o.hasRel = JSON.stringify(st).indexOf('rel.kaw.' + sp.id) >= 0;
+    const before = s.passportOk; const ev = { eventId: 'your:wishborn:' + s.id + ':joined:' + sp.id + ':' + T.rec(sp.id).joined, source: { worldId: 'your', buildVersion: 'x', saveVersion: 'wishborn-1' }, at: new Date().toISOString(), summary: 'dup', effects: [] };
+    const rr = PP.applyEvent(Object.assign({}, ev, { at: s.outbox[0] ? ev.at : ev.at })); o.dupRes = JSON.stringify(rr).slice(0, 60); return o; });
+  check('passport library present in the main game', pp.lib, pp);
+  check('Accord join was written to the passport (outbox drained, no error)', pp.outbox === 0 && !pp.err && pp.ok >= 1, pp);
+  check('passport shows the new relationship', pp.hasRel, pp);
   // hooks: E key opens panel near a wild, panel renders, draw doesn't throw
   const ui = await E(() => { const G = WIR_GAME.G, T = WISHBORN._t; const sp = WISHBORN.species[2]; const w = T.spawn(sp, [G.px + 1, G.py], false); const fn = WIR_GAME.nearestUse(); if (fn) fn(); return { hasUse: !!fn, panel: !document.getElementById('wbPanel').hidden, txt: document.getElementById('wbPanel').innerText.slice(0, 60) }; });
   check('interact near a wild opens its panel', ui.hasUse && ui.panel, ui);
