@@ -5,11 +5,13 @@
 var MORROW = { x: 60.5, y: 21.5, r: 1.4, overlay: null, lead: null, visits: 0, last: null, wasPaused: false };
 L.morrow = MORROW;
 function morrowNear() { var p = S.player; return p.mode !== 'car' && hyp(p.x - MORROW.x, p.y - MORROW.y) < MORROW.r; }
-function drawMorrowGate() { var t = S.t, X0 = MORROW.x * T, Y0 = MORROW.y * T + 6; cx.save();
-  for (var k = 0; k < 3; k++) { cx.strokeStyle = k === 1 ? 'rgba(201,166,255,.85)' : 'rgba(124,240,224,.75)'; cx.lineWidth = 2; cx.beginPath(); cx.ellipse(X0, Y0 - 16, 9 + k * 3 + Math.sin(t * 2 + k) * 1.5, 15 + k * 3, 0, 0, 7); cx.stroke(); }
-  cx.fillStyle = 'rgba(124,240,224,.18)'; cx.beginPath(); cx.ellipse(X0, Y0 - 16, 9, 15, 0, 0, 7); cx.fill();
+function drawMorrowGate() { var t = S.t, X0 = MORROW.x * T, Y0 = MORROW.y * T + 6, near = morrowNear(); cx.save();
+  if (!(window.MAP_ART && MAP_ART.drawGate(cx, X0, Y0, near, t))) {
+    for (var k = 0; k < 3; k++) { cx.strokeStyle = k === 1 ? 'rgba(201,166,255,.85)' : 'rgba(124,240,224,.75)'; cx.lineWidth = 2; cx.beginPath(); cx.ellipse(X0, Y0 - 16, 9 + k * 3 + Math.sin(t * 2 + k) * 1.5, 15 + k * 3, 0, 0, 7); cx.stroke(); }
+    cx.fillStyle = 'rgba(124,240,224,.18)'; cx.beginPath(); cx.ellipse(X0, Y0 - 16, 9, 15, 0, 0, 7); cx.fill();
+  }
   cx.font = '700 9px system-ui'; cx.textAlign = 'center'; var lab = 'MORROW LINE · MORROW CITY · E', w = cx.measureText(lab).width + 8;
-  cx.fillStyle = 'rgba(8,10,24,.8)'; cx.fillRect(X0 - w / 2, Y0 - 50, w, 13); cx.fillStyle = '#7cf0e0'; cx.fillText(lab, X0, Y0 - 40); cx.restore(); }
+  cx.fillStyle = 'rgba(8,10,24,.8)'; cx.fillRect(X0 - w / 2, Y0 - 70, w, 13); cx.fillStyle = '#7cf0e0'; cx.fillText(lab, X0, Y0 - 60); cx.restore(); }
 function openMorrow(lead) { if (MORROW.overlay) return false; MORROW.wasPaused = paused; paused = true; save('morrow');
   var ov = document.createElement('div'); ov.id = 'livingMorrowOverlay'; ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#120e16';
   var fr = document.createElement('iframe'); fr.id = 'livingMorrowFrame'; fr.title = 'Morrow City district'; fr.setAttribute('allow', 'gamepad; autoplay');
