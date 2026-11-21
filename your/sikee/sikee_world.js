@@ -702,6 +702,8 @@
       '.sk-btns{position:absolute;right:12px;bottom:14px;display:flex;gap:10px;align-items:flex-end;pointer-events:auto}' +
       '.sk-btns button{width:64px;height:64px;border-radius:50%;padding:0;font-size:11px;touch-action:manipulation}.sk-btns #skStrike{width:78px;height:78px;border-color:#ffe066;color:#ffe066;font-size:13px}' +
       '.sk-btns button:disabled{opacity:.4}' +
+      'body.sk-fight #yourMoves,body.sk-fight #yourPowers{display:none !important}' +
+      'body:has(#your-touch[style*="display: block"]) .sk-btns{bottom:calc(min(100vw,100vh) * .3 + 10px)}' +
       '#sikeeHud .mella{border-color:#ff9ad5;color:#ff9ad5}' +
       '.sk-ch i{background:#55ddff}';
     document.head.appendChild(css);
@@ -726,7 +728,7 @@
     bat.querySelector('#skRun').onclick = run;
     R.hud = { hud, bat };
   }
-  function showBattle(on) { if (R.hud) R.hud.bat.hidden = !on; if (on) updateBattleUI(); }
+  function showBattle(on) { if (R.hud) R.hud.bat.hidden = !on; if (document.body) document.body.classList.toggle('sk-fight', !!on); if (on) updateBattleUI(); }
   function updateBattleUI() {
     if (!R.hud || !R.battle) return;
     const b = R.battle, f = b.foe;
@@ -759,12 +761,11 @@
     const k = e.key.toLowerCase();
     if (R.battle) {
       // Movement keys fall through to the game so you can walk while you fight. Everything else is ours.
-      if (k === 'j') { strike(); e.preventDefault(); }
-      else if (k === 'b') { blast(); e.preventDefault(); }
-      else if (k === ' ' || k === 'shift') { dodge(); e.preventDefault(); e.stopImmediatePropagation(); }
-      else if (k === 'm') { toggleMella(); e.preventDefault(); }
-      else if (k === 'x') { run(); e.preventDefault(); }
-      else if (k === 'e' || k === 'r' || k === 'p' || k === 'k' || k === 'g' || k === 'escape') { e.preventDefault(); e.stopImmediatePropagation(); }
+      // The Y.O.U.R. layer binds J (hit), L (blast), Q (jump), C, T, 1-3 (powers), Shift/K (dash/sprint), F (fly), H/Z (KAW).
+      // In a fight those keys belong to the fight only, so stop them reaching the other layers.
+      const mine = { j: strike, b: blast, ' ': dodge, shift: dodge, m: toggleMella, x: run };
+      if (mine[k]) { if (!e.repeat || k === 'j') mine[k](); e.preventDefault(); e.stopImmediatePropagation(); }
+      else if (['e', 'r', 'p', 'k', 'g', 'escape', 'q', 'l', 'c', 't', '1', '2', '3', 'f', 'h', 'z'].includes(k)) { e.preventDefault(); e.stopImmediatePropagation(); }
       return;
     }
     if (GM().G.sheet || GM().G.phone || GM().G.fb || GM().G.lab || GM().MG.cur) return;

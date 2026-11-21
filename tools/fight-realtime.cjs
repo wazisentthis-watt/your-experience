@@ -103,6 +103,23 @@ const url = 'file://' + path.resolve(repo, 'index.html');
       return { lostOrDamaged: lost || hpMin < 60, hpMin, seconds: (Date.now() - t0) / 1000 };
     });
     check(`${w}: standing still gets you hit by TEMBO`, idle.lostOrDamaged, idle);
+    // other layers (Y.O.U.R. powers, sprint, KAW) must not see fight keys; movement keys must still pass
+    const iso = await page.evaluate(async () => {
+      const Y = window.__Y, D = SIKEE.debug, R = D.R, G = Y.G;
+      Y.fn.enterMap()('HOME', Y.MAPS.HOME.spawn); R.battle = null; R.cool = 0; R.hp = 60;
+      const def = { id: 'if00', name: 'IF-00', title: 'x', col: '#ff7d2a', dark: '#3a1d0c', hp: 40, dmg: 5, every: 1.6, pose: 'pose_if00' };
+      const w = { def, boss: false, x: G.px + 3, y: G.py, hp: 40, max: 40, map: 'HOME', dx: 0, dy: 0, timer: 0, hold: null, crimeT: 99, since: Date.now(), crimes: 0 };
+      R.wanderers.push(w); D.startBattle(w);
+      const seen = []; const spy = e => seen.push(e.key.toLowerCase()); window.addEventListener('keydown', spy);
+      for (const k of ['j', 'b', 'Shift', 'k', 'q', 'l', ' ', 'e', 'd']) window.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
+      window.removeEventListener('keydown', spy);
+      const moves = document.getElementById('yourMoves'), pw = document.getElementById('yourPowers');
+      const hidden = el => !el || getComputedStyle(el).display === 'none';
+      const out = { seen, powersHidden: hidden(moves) && hidden(pw), bodyClass: document.body.classList.contains('sk-fight') };
+      R.battle = null; document.body.classList.remove('sk-fight'); R.wanderers = [];
+      return out;
+    });
+    check(`${w}: fight keys do not leak to other layers, movement does`, iso.seen.join() === 'd' && iso.powersHidden && iso.bodyClass, iso);
     check(`${w}: no page errors`, errs.length === 0, { errs: errs.slice(0, 5) });
     await page.screenshot({ path: "/tmp/rt_" + w + ".png" });
     await page.close();
