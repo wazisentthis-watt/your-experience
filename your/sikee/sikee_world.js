@@ -244,13 +244,22 @@
     const g = GM().G; addFx('text', g.px, g.py - .9, { text: 'SLIP!', col: '#55ddff', max: .8 }); addFx('ring', g.px, g.py - .2, { col: '#55ddff', max: .4, rad: 1.1 });
     addParts(g.px, g.py - .2, '#9ff0ff', 14, 5, .45, 2.2); shake(.25); logLine('Slipped it. Your next punch crits.');
   }
+  function parried() {   // a parry timed into a hit: no damage, the foe staggers, your next strike is a +35% counter
+    const f = R.battle && R.battle.foe, g = GM().G, p = R.p; if (!f) return;
+    f.st = 'stagger'; f.stT = 1; f.atk = null; f.hit = true; R.counter = 2; R.slow = Math.max(R.slow || 0, .25); R.stop = Math.max(R.stop, .08);
+    R.charge = Math.min(CHARGE_MAX, R.charge + 15);
+    addFx('text', g.px, g.py - .9, { text: 'PARRY!', col: '#ffe066', max: .8 }); addFx('ring', g.px, g.py - .2, { col: '#ffe066', max: .4, rad: 1.2 });
+    addParts(g.px, g.py - .2, '#ffe066', 12, 5, .4, 2.2); shake(.2); logLine('Parried. Your next strike counters.');
+  }
   function atkListFor(f, phase) { return f.boss ? BOSS_ATKS[phase - 1] : (FOE_ATKS[f.def.id] || ['lunge']); }
 
   function hurtPlayer(dmg, dx, dy) {
     const p = R.p, g = GM().G; if (p.inv > 0) { if (p.dodgeT > 0) slip(); return false; }
+    if (p.parryT > 0) { parried(); return false; }
+    if (p.block) { dmg = Math.max(1, Math.round(dmg * .3)); addFx('text', g.px, g.py - .9, { text: 'BLOCK', col: '#9aa7ff', max: .5 }); addParts(g.px, g.py - .3, '#9aa7ff', 6, 3, .25, 2); shake(.1); }
     R.hp -= dmg; shake(.3); addParts(g.px, g.py - .3, '#ff6b6b', 8, 4, .35, 2); p.inv = .55; p.flash = .25; R.stop = .05;
     const l = Math.hypot(dx, dy) || 1, me = { x: g.px, y: g.py };
-    nudge(me, dx / l * .9, dy / l * .9, .3); g.px = me.x; g.py = me.y;
+    nudge(me, dx / l * (p.block ? .3 : .9), dy / l * (p.block ? .3 : .9), .3); g.px = me.x; g.py = me.y;
     addFx('num', g.px, g.py - .6, { text: '-' + dmg, col: '#ff6b6b', max: .7 });
     logLine(R.battle.foe.def.name + ' hits you for ' + dmg + '.');
     if (R.hp <= 0) { lose(); return true; }
@@ -347,7 +356,9 @@
     const b = R.battle, f = b.foe, g = GM().G, p = R.p;
     vfxTick(real);
     let dt = real; if (R.slow > 0) { R.slow -= real; dt = real * .35; }
-    p.slipCd = Math.max(0, (p.slipCd || 0) - dt);
+    p.slipCd = Math.max(0, (p.slipCd || 0) - dt); p.parryT = Math.max(0, (p.parryT || 0) - dt); p.parryCd = Math.max(0, (p.parryCd || 0) - dt);
+    if (R.counter > 0) R.counter = Math.max(0, R.counter - dt);
+    if (R.kiCharging && !p.block) { R.charge = Math.min(CHARGE_MAX, R.charge + 22 * dt); if (Math.random() < .5) addParts(GM().G.px, GM().G.py - .2, '#9ff0ff', 1, 1.2, .35, 2); }
     if (f.poiseT > 0) f.poiseT -= dt; else f.poise = Math.max(0, f.poise - 12 * dt);
     if (f.brk > 0) f.brk -= dt;
     if (f.burn) { f.burn.t -= dt; f.burn.acc += dt; R.crit = R.crit; if (f.burn.acc >= .5) { f.burn.acc = 0; dotFoe(f, f.burn.dps, '#ff8a3d'); if (!R.battle) return; } if (f.burn.t <= 0) f.burn = null; }
@@ -411,13 +422,72 @@
     const dot = (f.x - g.px) * p.fx + (f.y - g.py) * p.fy, d2 = Math.hypot(f.x - g.px, f.y - g.py);
     b.strike = HIT_CD;
     if (d2 <= reach + FOE_R * .6 && dot >= 0) {
-      const dmg = big ? Math.round(MELLA_HIT * 1.5) : MELLA_HIT;
+      let dmg = big ? Math.round(MELLA_HIT * 1.5) : MELLA_HIT; if (R.counter > 0) { dmg = Math.round(dmg * 1.35); R.counter = 0; }
       R.charge = Math.min(CHARGE_MAX, R.charge + PUNCH_CHARGE);
       logLine((big ? 'Heavy hit' : 'You punch') + ' ' + f.def.name + ' for ' + dmg + '.');
       R.stop = big ? .09 : .05;
       damageFoe(f, dmg, p.fx, p.fy, big ? 1.3 : .5, big ? .5 : 0, { melee: true });
     } else p.atkCd += .1;     // whiff recovery
     updateBattleUI();
+  }
+  // Stay On Page strike set: face buttons pick the move, RB makes it a power strike, LT turns it into a low one.
+  // dmg is a multiple of MELLA_HIT, reach is added to PUNCH_REACH, stag is the stagger time.
+  const MOVES = {
+    jab:   { dmg: .8,  cd: .2,  reach: 0,   stag: 0 },
+    cross: { dmg: 1.25, cd: .4, reach: .1,  stag: .2 },
+    teep:  { dmg: .7,  cd: .35, reach: .6,  stag: .3, push: 1 },
+    kick:  { dmg: 1.1, cd: .4,  reach: .25, stag: .15 },
+    knee:  { dmg: 1.2, cd: .35, reach: -.4, stag: .3 },
+    hook:  { dmg: 1.7, cd: .6,  reach: .2,  stag: .5, big: 1 },
+    upper: { dmg: 1.8, cd: .65, reach: 0,   stag: .6, big: 1 },
+    head:  { dmg: 1.9, cd: .7,  reach: .4,  stag: .6, big: 1 },
+    spin:  { dmg: 2.0, cd: .8,  reach: .5,  stag: .7, big: 1, ok: 1 },
+    body:  { dmg: .9,  cd: .3,  reach: 0,   stag: .15, low: 1 },
+    leg:   { dmg: .9,  cd: .35, reach: .2,  stag: 0,   low: 1, root: .7 },
+  };
+  function move(kind) {
+    const b = R.battle; if (!b) return; const m = MOVES[kind]; if (!m) return; const f = b.foe, g = GM().G, p = R.p;
+    if (!R.mella) { logLine('Enter MELLA (M) first.'); updateBattleUI(); return; }
+    if (p.atkCd > 0 || p.dodgeT > 0 || R.stop > 0 || (p.block && !m.low && !m.ok)) return;
+    const reach = PUNCH_REACH + m.reach; let dx = f.x - g.px, dy = f.y - g.py; const dist = Math.hypot(dx, dy) || 1;
+    if (dist < reach + 1) { p.fx = dx / dist; p.fy = dy / dist; }
+    p.arcT = .18; p.arcA = Math.atan2(p.fy, p.fx); p.arcBig = !!m.big; p.atkCd = m.cd;
+    const me = { x: g.px, y: g.py }; nudge(me, p.fx * .25, p.fy * .25, .3); g.px = me.x; g.py = me.y;
+    const dot = (f.x - g.px) * p.fx + (f.y - g.py) * p.fy, d2 = Math.hypot(f.x - g.px, f.y - g.py); b.strike = HIT_CD;
+    if (d2 <= reach + FOE_R * .6 && dot >= 0) {
+      let dmg = Math.round(MELLA_HIT * m.dmg), counter = false;
+      if (R.counter > 0) { dmg = Math.round(dmg * 1.35); R.counter = 0; counter = true; }
+      R.charge = Math.min(CHARGE_MAX, R.charge + Math.round(PUNCH_CHARGE * (m.big ? 1.2 : m.dmg < 1 ? .7 : 1)));
+      logLine((counter ? 'Counter! ' : '') + kind + ' hits ' + f.def.name + ' for ' + dmg + '.');
+      R.stop = m.big ? .09 : .05;
+      damageFoe(f, dmg, p.fx, p.fy, m.push ? 1.1 : m.big ? 1.3 : .5, m.stag, { melee: true });
+      if (R.battle && m.root) { f.root = Math.max(f.root || 0, m.root); addFx('ring', f.x, f.y, { col: '#d9d4c8', max: .4, rad: .7 }); }
+    } else p.atkCd += .1;
+    updateBattleUI();
+  }
+  function clinch() {   // LT + RB + A: close enough to grab, then throw
+    const b = R.battle; if (!b) return; const f = b.foe, g = GM().G, p = R.p;
+    if (!R.mella || p.atkCd > 0 || p.dodgeT > 0 || R.stop > 0) return;
+    const dx = f.x - g.px, dy = f.y - g.py, d = Math.hypot(dx, dy) || 1;
+    if (d > 1.3) { logLine('Too far to clinch.'); updateBattleUI(); return; }
+    p.fx = dx / d; p.fy = dy / d; p.atkCd = 1; R.stop = .1;
+    addFx('text', f.x, f.y - 1.2, { text: 'THROW', col: '#ffd24a', max: .7 });
+    damageFoe(f, 18, p.fx, p.fy, 1.7, .8, { melee: true, col: '#ffd24a' }); updateBattleUI();
+  }
+  function parry() { const p = R.p; if (!R.battle || p.parryCd > 0) return; p.parryT = .28; p.parryCd = .7; }
+  function guard(on) { if (R.p) R.p.block = !!on; }
+  function kiCharge(on) { R.kiCharging = !!on; }
+  function snap() { const b = R.battle; if (!b) return; const f = b.foe, g = GM().G, p = R.p, dx = f.x - g.px, dy = f.y - g.py, d = Math.hypot(dx, dy) || 1; p.fx = dx / d; p.fy = dy / d; }
+  function overblast() {   // special 2: spends 70 charge for a heavy bolt that staggers
+    const b = R.battle; if (!b) return; const g = GM().G, p = R.p, f = b.foe;
+    if (!R.mella) { logLine('MELLA is down.'); updateBattleUI(); return; }
+    if (R.blastCool > 0) return;
+    if (R.charge < 70) { logLine('Overblast needs 70 charge. Hold LB to charge.'); updateBattleUI(); return; }
+    let dx = p.fx, dy = p.fy; const fx = f.x - g.px, fy = f.y - g.py, fd = Math.hypot(fx, fy) || 1; if (fd < 9 && !R.manualAim) { dx = fx / fd; dy = fy / fd; p.fx = dx; p.fy = dy; }
+    R.charge -= 70; R.blastCool = 1.6;
+    R.shots.push({ x: g.px, y: g.py - .2, vx: dx * 11, vy: dy * 11, from: 'p', dmg: 55, life: .9, r: .6, col: '#ff9ad5' });
+    addFx('ring', g.px + dx * .5, g.py - .2, { col: '#ff9ad5', max: .3, rad: .9 }); addParts(g.px + dx * .5, g.py - .2, '#ffc0e6', 14, 5, .35, 2.4); shake(.25);
+    logLine('Overblast fired.'); updateBattleUI();
   }
   // Blast: spends charge, fires a bolt along your aim. Dodgeable by moving off its line.
   function blast() {
@@ -426,7 +496,7 @@
     if (R.blastCool > 0) return;
     if (R.charge < BLAST_COST) { logLine('Not enough charge. Punch to build it.'); updateBattleUI(); return; }
     let dx = p.fx, dy = p.fy; const fx = f.x - g.px, fy = f.y - g.py, fd = Math.hypot(fx, fy) || 1;
-    if (fd < 9) { dx = fx / fd; dy = fy / fd; p.fx = dx; p.fy = dy; }
+    if (fd < 9 && !R.manualAim) { dx = fx / fd; dy = fy / fd; p.fx = dx; p.fy = dy; }
     R.charge -= BLAST_COST; R.blastCool = BLAST_CD;
     R.shots.push({ x: g.px, y: g.py - .2, vx: dx * 10, vy: dy * 10, from: 'p', dmg: BLAST_DMG, life: .9, r: .4, col: '#55ddff' });
     addFx('ring', g.px + dx * .5, g.py - .2, { col: '#55ddff', max: .2, rad: .5 });
@@ -850,15 +920,20 @@
 
   window.SIKEE = {
     tick, enterMap: onEnterMap, drawList,
+    api: API,
     blocking: () => false,   // the fight runs in the world: movement and the clock keep going
     fighting: () => !!R.battle,
     // controller entry point: aim is an optional unit vector (right stick); the fight rules stay in strike/blast/dodge/run
-    act(name, ax, ay) {
-      if (!R.battle) return false;
-      if ((ax || ay) && R.p) { const l = Math.hypot(ax, ay) || 1; R.p.fx = ax / l; R.p.fy = ay / l; }
-      ({ strike, blast, dodge, run, kaw: callKaw })[name]?.(); return true;
+    // opt: true/false for guard and charge; { manual: true } makes blasts follow the stick instead of auto-aiming
+    act(name, ax, ay, opt) {
+      if (!R.battle) { if (R.p) R.p.block = false; R.kiCharging = false; return false; }
+      const manual = !!((ax || ay) && R.p); if (manual) { const l = Math.hypot(ax, ay) || 1; R.p.fx = ax / l; R.p.fy = ay / l; }
+      R.manualAim = manual && (name === 'blast' || name === 'overblast');
+      if (MOVES[name]) move(name);
+      else ({ strike, blast, dodge, run, kaw: callKaw, clinch, parry, snap, overblast, guard: () => guard(opt), charge: () => kiCharge(opt) })[name]?.();
+      R.manualAim = false; return true;
     },
     wreckSlow,
-    debug: { R, API, st, dodge, callKaw, plantStage, spawnRoadVillain, spawnSikeeOnRoad, startBattle, homeIntruder, strike, blast, commitCrime, wreckCount, startRepair, tickUpkeep },
+    debug: { R, API, st, MOVES, move, parry, guard, clinch, overblast, dodge, callKaw, plantStage, spawnRoadVillain, spawnSikeeOnRoad, startBattle, homeIntruder, strike, blast, commitCrime, wreckCount, startRepair, tickUpkeep },
   };
 })();
