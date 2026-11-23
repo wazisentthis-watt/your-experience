@@ -4,7 +4,7 @@
    This layer wraps navigator.getGamepads() and hands every module a "virtual" standard pad:
      - menus, minigames, overlays: physical buttons pass straight through (Menu also stands in for View / Back)
      - city (on foot): the layout below, translated into the buttons each layer already reads
-     - fight (SIKEE street / house): fight actions go straight to SIKEE.act(); the other layers see a quiet pad
+     - fight (SIKEE street / house): the WIR RENDERZ: STAY ON PAGE layout (v44) goes straight to SIKEE.act(); the other layers see a quiet pad
    Nothing here edits the other layers' logic. The old index map in your_v22_config is replaced at load.
    Layout numbers are guesses to tune by feel (TAP_MS, FLICK, DEAD). */
 (function () {
@@ -34,12 +34,21 @@
       'Menu': 'Phone'
     },
     fight: {
-      'Left stick': 'Move',
-      'X': 'Punch (3-hit combo)',
-      'Right stick flick': 'Punch that way',
-      'RT': 'Blast (costs charge)',
-      'B': 'Dodge (a dodge into an attack is a SLIP: slow-mo and a crit)',
-      'Y': 'Call your KAW (they decide if they help)',
+      'Left stick': 'Move. Hold LT and flick it to roll (a roll into an attack is a SLIP: slow-mo and a crit)',
+      'Right stick': 'Aim ki blasts',
+      'X / Y / A / B': 'Jab / Cross / Teep / Kick (knee up close)',
+      'Hold RB + X / Y / A / B': 'Power strikes: hook / uppercut / head kicks',
+      'RB + LT + B': 'Spinning back kick',
+      'LT + RB + A': 'Clinch throw (close only)',
+      'Tap RB': 'Snap aim onto the foe',
+      'Hold LT': 'Block. Tap it just before a hit lands to PARRY (foe staggers, next strike +35%)',
+      'LT + X / Y / A / B': 'Body shots / leg kicks',
+      'RT': 'Ki blast (costs charge)',
+      'Hold LB': 'Charge ki',
+      'LB + X': 'Special 1: call your KAW (they decide if they help)',
+      'LB + Y': 'Special 2: Overblast (70 charge)',
+      'LB + RT': 'Vanish: run, once you are clear of the foe',
+      'D-pad up': 'Call your KAW',
       'Hold Menu': 'Run, once you are clear of the foe'
     },
     menu: {
@@ -63,11 +72,11 @@
   function dz(v) { return Math.abs(v) < DEAD ? 0 : v; }
   function now() { return performance.now(); }
 
-  var prev = {}, pulses = {}, held = {}, tapB = null, bHeld = false, fleeT = 0, lastCtx = '', rsLatch = false, strikeCd = 0, ltRtOn = false;
+  var rbUsed = false, prev = {}, pulses = {}, held = {}, tapB = null, bHeld = false, fleeT = 0, lastCtx = '', rsLatch = false, strikeCd = 0, ltRtOn = false;
 
   function edge(key, on) { var e = on && !prev[key]; prev[key] = on; return e; }
   function pulse(i) { pulses[i] = now() + PULSE_MS; }
-  function reset() { pulses = {}; held = {}; tapB = null; bHeld = false; fleeT = 0; rsLatch = false; }
+  function reset() { pulses = {}; held = {}; tapB = null; bHeld = false; fleeT = 0; rsLatch = false; if (window.SIKEE && SIKEE.act) { SIKEE.act('guard', 0, 0, false); SIKEE.act('charge', 0, 0, false); } }
 
   function context() {
     var W = window.WIR_GAME; if (!W || !W.S) return 'menu';
@@ -98,12 +107,27 @@
       set(8, btn(gp, 8) || btn(gp, 9)); set(9, btn(gp, 9));
       reset();
     } else if (c === 'fight') {
-      var S = window.SIKEE;
-      if (edge('fx', X)) S.act('strike', aim ? aim[0] : 0, aim ? aim[1] : 0);
-      if (aim) { if (!rsLatch && t > strikeCd) { rsLatch = true; strikeCd = t + 260; S.act('strike', aim[0], aim[1]); } } else rsLatch = false;
-      if (edge('fr', rtOn)) S.act('blast', aim ? aim[0] : 0, aim ? aim[1] : 0);
-      if (edge('fb', B)) S.act('dodge');
-      if (edge('fy', Y)) S.act('kaw');
+      var S = window.SIKEE, ax = aim ? aim[0] : 0, ay = aim ? aim[1] : 0, lmag = Math.hypot(lx, ly);
+      /* LT: hold = block, the press itself opens the parry window */
+      if (edge('flt', ltOn)) S.act('parry'); S.act('guard', 0, 0, ltOn);
+      /* LB: hold = charge ki, and it turns the face buttons into specials */
+      S.act('charge', 0, 0, LB);
+      var face = [['fx', X, 'x'], ['fy', Y, 'y'], ['fa', A, 'a'], ['fb', B, 'b']], used = false;
+      face.forEach(function (f) {
+        if (!edge(f[0], f[1])) return; used = true; var k = f[2];
+        if (LB) { if (k === 'x') S.act('kaw'); else if (k === 'y') S.act('overblast', ax, ay); return; }   /* B ultimate and A transform do not exist in street fights */
+        if (RB && ltOn) { if (k === 'a') S.act('clinch'); else if (k === 'b') S.act('spin'); return; }
+        if (RB) { S.act(k === 'x' ? 'hook' : k === 'y' ? 'upper' : 'head'); return; }
+        if (ltOn) { S.act(k === 'x' || k === 'y' ? 'body' : 'leg'); return; }
+        var near = false; try { var fo = S.api && S.api.foe(), h = S.api && S.api.hero(); near = fo && h && Math.hypot(fo.x - h.x, fo.y - h.y) < 1.0; } catch (e) {}
+        S.act(k === 'x' ? 'jab' : k === 'y' ? 'cross' : k === 'a' ? 'teep' : (near ? 'knee' : 'kick'));
+      });
+      /* RB tapped on its own snaps your aim onto the foe */
+      if (RB && !prev.rb) rbUsed = false; if (RB && used) rbUsed = true;
+      if (!RB && prev.rb && !rbUsed) S.act('snap'); prev.rb = RB;
+      if (edge('fr', rtOn)) { if (LB) S.act('run'); else S.act('blast', ax, ay); }
+      if (ltOn && edge('froll', lmag > .85)) S.act('dodge');
+      if (edge('fdu', DU)) S.act('kaw');
       if (MENU) { if (!fleeT) fleeT = t; else if (t - fleeT > FLEE_MS) { fleeT = 0; S.act('run'); } } else fleeT = 0;
       /* the other layers see only the left stick */
     } else {

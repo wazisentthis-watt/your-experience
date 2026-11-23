@@ -81,10 +81,10 @@ const url = 'file://' + path.resolve(process.argv[2] || '.', 'index.html');
   // follower returns to normal after the fight
   const back = await E(async () => { WISHBORN.state().accord = []; WISHBORN._t.R.followers = []; const sp = WISHBORN.species[3]; WISHBORN.state().accord = [{ sp: sp.id, since: 'x', fedAt: Date.now(), energy: 1 }]; WISHBORN._t.followerObjs(); WISHBORN._t.R.fightAt = performance.now() - 5000; const G = WIR_GAME.G; G.px += 6; for (let i = 0; i < 200; i++) WISHBORN.tick(.05); const f = WISHBORN.followers[0]; return Math.hypot(f.x - G.px, f.y - G.py); });
   check('followers go back to normal follow after a fight (' + back.toFixed(1) + ')', back < 4, back);
-  // Nimbus Y calls KAW in a fight
+  // Nimbus LB + X (Stay On Page Special 1) calls KAW in a fight
   const ny = await E(async () => { __fresh(); let n = 0; const orig = WISHBORN.fightCall; WISHBORN.fightCall = () => { n++; }; const gp = { id: 'Nimbus', index: 0, connected: true, mapping: 'standard', timestamp: 0, axes: [0, 0, 0, 0], buttons: Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 })) };
-    await new Promise(r => setTimeout(r, 150)); __press(3); await new Promise(r => setTimeout(r, 200)); __rel(3); await new Promise(r => setTimeout(r, 120)); WISHBORN.fightCall = orig; return n; });
-  check('Nimbus Y calls your KAW in a fight', ny >= 1, ny);
+    await new Promise(r => setTimeout(r, 150)); __press(4); await new Promise(r => setTimeout(r, 120)); __press(2); await new Promise(r => setTimeout(r, 200)); __rel(2); __rel(4); await new Promise(r => setTimeout(r, 120)); WISHBORN.fightCall = orig; return n; });
+  check('Nimbus LB+X calls your KAW in a fight', ny >= 1, ny);
   check('no page errors', errs.length === 0, errs.slice(0, 4));
   console.log(`\n${pass} passed, ${fail} failed`); await browser.close(); process.exit(fail ? 1 : 0);
 })();
