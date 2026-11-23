@@ -38,7 +38,8 @@
       'X': 'Punch (3-hit combo)',
       'Right stick flick': 'Punch that way',
       'RT': 'Blast (costs charge)',
-      'B': 'Dodge (you are untouchable for a moment)',
+      'B': 'Dodge (a dodge into an attack is a SLIP: slow-mo and a crit)',
+      'Y': 'Call your KAW (they decide if they help)',
       'Hold Menu': 'Run, once you are clear of the foe'
     },
     menu: {
@@ -102,6 +103,7 @@
       if (aim) { if (!rsLatch && t > strikeCd) { rsLatch = true; strikeCd = t + 260; S.act('strike', aim[0], aim[1]); } } else rsLatch = false;
       if (edge('fr', rtOn)) S.act('blast', aim ? aim[0] : 0, aim ? aim[1] : 0);
       if (edge('fb', B)) S.act('dodge');
+      if (edge('fy', Y)) S.act('kaw');
       if (MENU) { if (!fleeT) fleeT = t; else if (t - fleeT > FLEE_MS) { fleeT = 0; S.act('run'); } } else fleeT = 0;
       /* the other layers see only the left stick */
     } else {

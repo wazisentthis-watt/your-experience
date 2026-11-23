@@ -9,6 +9,7 @@
     if (type === 'observed') return { key: 'observed:' + id + ':' + (d.n || 1), summary: 'Observed ' + n + ' in the wild', eff: [{ layer: 'knowledge', key: 'kaw.observed.' + id, kind: 'record', op: 'delta', amount: 1, text: 'Watched ' + n + ' without startling it.' }] };
     if (type === 'joined') return { key: 'joined:' + id + ':' + (d.n || 1), summary: n + ' chose to walk with Mella', eff: [{ layer: 'relationships', key: 'rel.kaw.' + id, kind: 'upgrade', op: 'delta', amount: 2, text: n + ' chose to walk with you.' }] };
     if (type === 'parted') return { key: 'parted:' + id + ':' + Date.now().toString(36), summary: n + ' went its own way', eff: [{ layer: 'relationships', key: 'rel.kaw.' + id, kind: 'record', op: 'delta', amount: 0, text: n + ' went its own way (' + d.why + ').' }] };
+    if (type === 'assist') return { key: 'assist:' + id + ':' + (d.n || 1), summary: n + ' helped Mella in a fight', eff: [{ layer: 'relationships', key: 'rel.kaw.' + id, kind: 'record', op: 'delta', amount: 0, text: n + ' used ' + d.fx + ' to help in a street fight.' }] };
     if (type === 'rescue') return { key: 'rescue:' + id + ':' + Date.now().toString(36), summary: 'KAW rescue: ' + n + (d.ok ? ' (correct placement)' : ' (wrong placement)'),
       eff: d.ok ? [{ layer: 'skills', key: 'kaw.catcher', kind: 'upgrade', op: 'delta', amount: 1, text: 'Placed ' + n + ' where its condition needed.' }] : [{ layer: 'knowledge', key: 'kaw.catcher.lesson', kind: 'record', op: 'delta', amount: 1, text: 'Misplaced ' + n + '; check health before choosing.' }] };
     return null;
