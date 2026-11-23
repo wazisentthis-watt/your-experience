@@ -48,7 +48,7 @@ const url = 'file://' + path.resolve(process.argv[2] || '.', 'index.html');
     const mk = () => { const sp = WISHBORN.species.filter(x => x.beh !== 'territorial')[s.accord.length + 3]; const w = T.spawn(sp, [G.px + 3, G.py], false); T.rec(sp.id).lvl = 3; w.offers = 2; w.trust = 90; w.fear = 0; return w; };
     T.invite(mk()); const two = s.accord.length; T.invite(mk()); Math.random = r; return { two, three: s.accord.length }; });
   check('Accord caps at 2', cap.two === 2 && cap.three === 2, cap);
-  const follow = await E(async () => { const G = WIR_GAME.G; G.px += 3; for (let i = 0; i < 400; i++) WISHBORN.tick(.05); const f = WISHBORN.followers[0]; return Math.hypot(f.x - G.px, f.y - G.py); });
+  const follow = await E(async () => { const G = WIR_GAME.G; G.px += 3; const rq = Math.random; Math.random = () => .95; for (let i = 0; i < 400; i++) WISHBORN.tick(.05); Math.random = rq; const f = WISHBORN.followers[0]; return Math.hypot(f.x - G.px, f.y - G.py); });
   check('followers keep up with the hero (' + follow.toFixed(1) + ' tiles)', follow < 4, follow);
   const leave = await E(() => { const s = WISHBORN.state(), id = s.accord[0].sp; WISHBORN._t.part(id, 'test'); return { n: s.accord.length, f: WISHBORN.followers.length }; });
   check('follower can leave freely', leave.n === 1 && leave.f === 1, leave);
@@ -82,6 +82,27 @@ const url = 'file://' + path.resolve(process.argv[2] || '.', 'index.html');
   check('passport library present in the main game', pp.lib, pp);
   check('Accord join was written to the passport (outbox drained, no error)', pp.outbox === 0 && !pp.err && pp.ok >= 1, pp);
   check('passport shows the new relationship', pp.hasRel, pp);
+  // Fixtures: dormant objects an Accord follower can wake, on its own or when asked
+  const fx = await E(async () => { const T = WISHBORN._t, G = WIR_GAME.G, s = WISHBORN.state(), o = {};
+    WIR_GAME.enterMap('SAV'); T.seedFixtures('SAV'); o.n = WISHBORN.fixtures.length; o.drawn = WISHBORN.drawList(G.map, 0).length;
+    const fixA = WISHBORN.fixtures.slice(); T.seedFixtures('SAV'); o.stable = JSON.stringify(fixA.map(f => [f.id, f.x, f.y])) === JSON.stringify(WISHBORN.fixtures.map(f => [f.id, f.x, f.y]));
+    const fxo = WISHBORN.fixtures[0], want = T.FIX[fxo.kind].fx; const sp = WISHBORN.species.find(x => x.fx === want);
+    s.accord = [{ sp: sp.id, since: 'x', fedAt: Date.now(), energy: 1 }]; T.followerObjs(); const f = WISHBORN.followers[0]; f.x = fxo.x + 2; f.y = fxo.y; G.px = fxo.x + 3; G.py = fxo.y;
+    o.dormant = !T.restored(fxo);
+    const bad = WISHBORN.species.find(x => x.fx !== want); const ringz0 = s.ringz;
+    const rr = Math.random; Math.random = () => 0; T.askFollower(f, fxo); Math.random = rr; o.go = f.st === 'power';
+    for (let i = 0; i < 400 && f.st === 'power'; i++) WISHBORN.tick(.05); o.restored = T.restored(fxo); o.ringz = s.ringz - ringz0; o.energy = f.a.energy; o.count = Object.values(s.restores).reduce((a, b) => a + b, 0);
+    // asking a tired follower: declines
+    const fx2 = WISHBORN.fixtures.find(x => T.FIX[x.kind].fx === want && !T.restored(x)); if (fx2) { f.a.energy = .1; f.st = 'follow'; f.pw = null; const r2 = Math.random; Math.random = () => .6; T.askFollower(f, fx2); Math.random = r2; o.tiredDeclined = f.st !== 'power'; } else o.tiredDeclined = true;
+    // drift back after ENV_MS
+    s.env[fxo.id] = Date.now() - 13 * 60000; o.drifted = !T.restored(fxo);
+    // passport got it
+    WISHBORN_PASSPORT.flush(); o.pErr = s.passportError || null; return o; });
+  check('5 fixtures per city, drawn, stable across visits', fx.n === 5 && fx.drawn >= 5 && fx.stable, fx);
+  check('follower restores a fixture when asked (power phases), +2 ringz, spends energy', fx.go && fx.restored && fx.ringz === 2 && fx.energy < 1, fx);
+  check('tired follower may say no', fx.tiredDeclined, fx);
+  check('restored fixture drifts back to dormant', fx.drifted, fx);
+  check('restore reaches the passport without error', !fx.pErr, fx);
   // hooks: E key opens panel near a wild, panel renders, draw doesn't throw
   const ui = await E(() => { const G = WIR_GAME.G, T = WISHBORN._t; const sp = WISHBORN.species[2]; const w = T.spawn(sp, [G.px + 1, G.py], false); const fn = WIR_GAME.nearestUse(); if (fn) fn(); return { hasUse: !!fn, panel: !document.getElementById('wbPanel').hidden, txt: document.getElementById('wbPanel').innerText.slice(0, 60) }; });
   check('interact near a wild opens its panel', ui.hasUse && ui.panel, ui);
