@@ -1,0 +1,337 @@
+{
+  "team": "CelestFur",
+  "team_number": "24",
+  "status": "PROPOSAL_HOLD",
+  "cell": 96,
+  "design": "white/gold armoured angelic warrior, lavender accents, gold pointed-ear helmet, glowing halo, white feathered wings",
+  "source": "celestfur-squad-living/final/*.png \u2014 29 strips, 320x360 per frame, transparent RGBA; frame counts and verdicts per celestfur-squad-living/manifest.json",
+  "method": "Each 320x360 frame scaled aspect-preserving to 85x96 (height 96, width 320*96/360=85.33 rounded to 85) with LANCZOS, centred horizontally (x offset 5) in its 96x96 cell, RGBA preserved. No frames dropped, invented, repeated, or redrawn. WebP lossless. Repo convention checked: tools/sprite-cut/cut_grid.py and your/assets/SHEETS.json (96px square cells everywhere, all facing right, engine mirrors for left) \u2014 note: cut_grid.py crops each cell to its content bbox and bottom-anchors at max 90px; this cut follows the task spec instead (whole-frame scale to 85x96, centred), so wing tips at cell edges are preserved rather than re-cropped.",
+  "facing": "mixed \u2014 engine mirrors",
+  "facing_note": "Run frames face mixed directions (e.g. qb-01 run frame 1 faces left, the rest face right); per-cell facing was not verified. All strips are recorded as facing right per repo convention; the engine mirrors for left.",
+  "positions_are_positional": "Squad strips are positional (QB-01 etc.), NOT named characters \u2014 no named character is mapped to any positional strip.",
+  "atlases": {
+    "run": {
+      "file": "celestfur_run_96.webp",
+      "cols": 6,
+      "rows": 11,
+      "width": 576,
+      "height": 1056,
+      "cell": 96,
+      "rows_list": [
+        {
+          "position": "QB-01",
+          "id": "qb-01",
+          "source_strip": "qb-01-run.png",
+          "frames": 6,
+          "row": 0
+        },
+        {
+          "position": "RB-07",
+          "id": "rb-07",
+          "source_strip": "rb-07-run.png",
+          "frames": 6,
+          "row": 1
+        },
+        {
+          "position": "WR-11",
+          "id": "wr-11",
+          "source_strip": "wr-11-run.png",
+          "frames": 6,
+          "row": 2
+        },
+        {
+          "position": "WR-84",
+          "id": "wr-84",
+          "source_strip": "wr-84-run.png",
+          "frames": 6,
+          "row": 3
+        },
+        {
+          "position": "TE-88",
+          "id": "te-88",
+          "source_strip": "te-88-run.png",
+          "frames": 6,
+          "row": 4
+        },
+        {
+          "position": "OL-55",
+          "id": "ol-55",
+          "source_strip": "ol-55-run.png",
+          "frames": 6,
+          "row": 5
+        },
+        {
+          "position": "OL-66",
+          "id": "ol-66",
+          "source_strip": "ol-66-run.png",
+          "frames": 6,
+          "row": 6
+        },
+        {
+          "position": "OL-77",
+          "id": "ol-77",
+          "source_strip": "ol-77-run.png",
+          "frames": 6,
+          "row": 7
+        },
+        {
+          "position": "OL-60",
+          "id": "ol-60",
+          "source_strip": "ol-60-run.png",
+          "frames": 6,
+          "row": 8
+        },
+        {
+          "position": "OL-72",
+          "id": "ol-72",
+          "source_strip": "ol-72-run.png",
+          "frames": 6,
+          "row": 9
+        },
+        {
+          "position": "Flex-33",
+          "id": "flex-33",
+          "source_strip": "flex-33-run.png",
+          "frames": 6,
+          "row": 10
+        }
+      ]
+    },
+    "celebrate": {
+      "file": "celestfur_celebrate_96.webp",
+      "cols": 6,
+      "rows": 11,
+      "width": 576,
+      "height": 1056,
+      "cell": 96,
+      "rows_list": [
+        {
+          "position": "QB-01",
+          "id": "qb-01",
+          "source_strip": "qb-01-celebrate.png",
+          "frames": 6,
+          "row": 0
+        },
+        {
+          "position": "RB-07",
+          "id": "rb-07",
+          "source_strip": "rb-07-celebrate.png",
+          "frames": 6,
+          "row": 1
+        },
+        {
+          "position": "WR-11",
+          "id": "wr-11",
+          "source_strip": "wr-11-celebrate.png",
+          "frames": 6,
+          "row": 2
+        },
+        {
+          "position": "WR-84",
+          "id": "wr-84",
+          "source_strip": "wr-84-celebrate.png",
+          "frames": 6,
+          "row": 3
+        },
+        {
+          "position": "TE-88",
+          "id": "te-88",
+          "source_strip": "te-88-celebrate.png",
+          "frames": 6,
+          "row": 4
+        },
+        {
+          "position": "OL-55",
+          "id": "ol-55",
+          "source_strip": "ol-55-celebrate.png",
+          "frames": 6,
+          "row": 5
+        },
+        {
+          "position": "OL-66",
+          "id": "ol-66",
+          "source_strip": "ol-66-celebrate.png",
+          "frames": 6,
+          "row": 6
+        },
+        {
+          "position": "OL-77",
+          "id": "ol-77",
+          "source_strip": "ol-77-celebrate.png",
+          "frames": 6,
+          "row": 7
+        },
+        {
+          "position": "OL-60",
+          "id": "ol-60",
+          "source_strip": "ol-60-celebrate.png",
+          "frames": 6,
+          "row": 8
+        },
+        {
+          "position": "OL-72",
+          "id": "ol-72",
+          "source_strip": "ol-72-celebrate.png",
+          "frames": 6,
+          "row": 9
+        },
+        {
+          "position": "Flex-33",
+          "id": "flex-33",
+          "source_strip": "flex-33-celebrate.png",
+          "frames": 6,
+          "row": 10
+        }
+      ]
+    },
+    "block": {
+      "file": "celestfur_block_96.webp",
+      "cols": 6,
+      "rows": 7,
+      "width": 576,
+      "height": 672,
+      "cell": 96,
+      "rows_list": [
+        {
+          "position": "TE-88",
+          "id": "te-88",
+          "source_strip": "te-88-block.png",
+          "frames": 6,
+          "row": 0
+        },
+        {
+          "position": "OL-55",
+          "id": "ol-55",
+          "source_strip": "ol-55-block.png",
+          "frames": 6,
+          "row": 1
+        },
+        {
+          "position": "OL-66",
+          "id": "ol-66",
+          "source_strip": "ol-66-block.png",
+          "frames": 6,
+          "row": 2
+        },
+        {
+          "position": "OL-77",
+          "id": "ol-77",
+          "source_strip": "ol-77-block.png",
+          "frames": 6,
+          "row": 3
+        },
+        {
+          "position": "OL-60",
+          "id": "ol-60",
+          "source_strip": "ol-60-block.png",
+          "frames": 5,
+          "row": 4
+        },
+        {
+          "position": "OL-72",
+          "id": "ol-72",
+          "source_strip": "ol-72-block.png",
+          "frames": 5,
+          "row": 5
+        },
+        {
+          "position": "Flex-33",
+          "id": "flex-33",
+          "source_strip": "flex-33-block.png",
+          "frames": 6,
+          "row": 6
+        }
+      ],
+      "pad_cells": "ol-60 (row 4) and ol-72 (row 5) have only 5 frames; column 6 of those rows is intentionally transparent \u2014 no frame invented or repeated."
+    }
+  },
+  "defects": [
+    {
+      "strip": "flex-33-celebrate",
+      "position": "Flex-33",
+      "action": "celebrate",
+      "frame": 5,
+      "known_bad": true,
+      "flag": "KNOWN BAD \u2014 wrong character: white/green/brown Orun Vale-style outfit, no wings, no gold CelestFur helmet, green knee pads and brown belt. Top candidate for a redraw; no redraw authorised in this cut.",
+      "verdict": "weak \u2014 number 33 clear every frame; frame 5 is the wrong character entirely; frame 4 also off-design: no wings and no halo visible, arms down, running pose; frames 1, 2, 3, 6 are on-design with halo, wings and 33 correct."
+    },
+    {
+      "strip": "rb-07-run",
+      "position": "RB-07",
+      "action": "run",
+      "frames": 6,
+      "flag": "6 figures, not 7 as specified.",
+      "verdict": "middling \u2014 6 figures, not 7 as specified; ball tucked under the arm every frame; number 07 clear every frame; frame 1 wing tip tight to top-left; uneven scale across frames."
+    },
+    {
+      "strip": "ol-60-block",
+      "position": "OL-60",
+      "action": "block",
+      "frames": 5,
+      "flag": "5 frames, not 6 \u2014 column 6 of its atlas row is transparent padding.",
+      "verdict": "middling \u2014 5 figures, not 6; number 60 clear in all 5 frames; side profile pushing right, arms straight out front, open palms, feet stepping/lunging forward, body leaning progressively further forward; first figure noticeably larger than the rest; frame 1 wing tips run close to the top edge."
+    },
+    {
+      "strip": "ol-72-block",
+      "position": "OL-72",
+      "action": "block",
+      "frames": 5,
+      "flag": "5 frames, not 6 \u2014 column 6 of its atlas row is transparent padding.",
+      "verdict": "middling \u2014 5 figures, not 6; number 72 readable in frames 1-3; frames 4-5 look like '772' (an extra/duplicate 7); frame 1 smaller/more upright than the rest; frame 5 wing extends to the bottom-right corner near the edge."
+    },
+    {
+      "strip": "ol-72-run",
+      "position": "OL-72",
+      "action": "run",
+      "flag": "Green Orun-style legs.",
+      "verdict": "middling \u2014 number 72 clear every frame; no ball; design drift: green legs/boots, brown belt and pouches, green-accented helmet (Orun Vale styling bleeding in); wings and halo correct; frame 3 wings much smaller/mostly hidden, frame 1 halo faint."
+    },
+    {
+      "strip": "te-88-run",
+      "position": "TE-88",
+      "action": "run",
+      "flag": "Number on thigh in frames 3-6, no readable 88 in frames 1-2.",
+      "verdict": "middling \u2014 catch sequence correct: ball in the air in frame 1, caught in frame 2, tucked in frames 3-6; number 88 is on the thigh in frames 3-6, not on the chest, and no readable 88 in frames 1-2; wings/halo close to the top edge in frame 1."
+    },
+    {
+      "strip": "wr-84-run",
+      "position": "WR-84",
+      "action": "run",
+      "frame": 2,
+      "flag": "Frame 2 has two balls (one in the air above + one tucked).",
+      "verdict": "middling \u2014 number 84 clear every frame; catch sequence failed: frame 1 already has the ball tucked (no ball in the air), frame 2 has two balls (one in the air above + one tucked), frames 3-6 tucked correctly; same lavender/gold design drift as WR-11."
+    },
+    {
+      "strip": "te-88-celebrate / ol-55-celebrate / ol-66-celebrate / ol-77-celebrate",
+      "action": "celebrate",
+      "flag": "CLIPPING NOTE \u2014 wings exceed cell width in several celebrate frames (te-88 frames 2-3 and 6; ol-55 frames 2-3 and 6; ol-66 frames 2-4 and 6; ol-77 frames 2, 3 and 5). Wing tips are clipped at the 320px cell boundary in the source strips; noted, not fixed.",
+      "verdict": "Transcribed from manifest.json: te-88 celebrate 'wings in frames 2-3 and 6 spread wider than a 320px cell'; ol-55 celebrate 'wings in frames 2-3 and 6 exceed cell width'; ol-66 celebrate 'wings in frames 2-4 and 6 exceed cell width'; ol-77 celebrate 'wings in frames 2, 3 and 5 spread beyond cell width'."
+    }
+  ],
+  "other_manifest_verdicts": {
+    "run": {
+      "qb-01": "good \u2014 real movement; ball in hand every frame; number 01 clear every frame; frame 3 left wing clipped at its left edge; frame 6 foot tight at bottom-right; uneven scale across frames.",
+      "wr-11": "good \u2014 catch reads as a continuous run: ball in the air in frame 1, caught in frame 2, tucked in frames 3-6; number 11 clear in frames 1, 3, 5, 6, partly hidden behind the ball in frames 2 and 4; design drift: more lavender/gold with a small side-winged helmet rather than the pointed-ear gold helmet.",
+      "ol-55": "good \u2014 real movement; number 55 clear every frame; no ball.",
+      "ol-66": "good \u2014 real movement; number 66 clear every frame; no ball.",
+      "ol-77": "middling \u2014 number 77 clear every frame but low contrast (pale gold on white); design drift: mostly white/silver with bronze-brown trim and dark green gloves, silver helmet with black visor, much less gold/lavender; frame 4 wings show motion blur/smearing.",
+      "ol-60": "good \u2014 real movement; number 60 clear every frame; halo in every frame; no ball.",
+      "flex-33": "good \u2014 catch sequence correct: ball in the air in frame 1, caught in frame 2, tucked in frames 3-6; number 33 clear every frame; cleanest run strip."
+    },
+    "celebrate": {
+      "qb-01": "good \u2014 jumping celebration; ball held high in one hand every frame; number 1 clear every frame.",
+      "rb-07": "good \u2014 jumping celebration; ball held high in one hand every frame; number 7 clear every frame; cleanest celebrate strip; raw had a baked-in checkerboard background, fixed in post-processing.",
+      "wr-11": "middling \u2014 ball held high every frame; number 11 clear in frames 1, 2, 3 and 5 only; frame 4 shows only a single '1', frame 6 shows no number on the chest; design drift: whiter armour, smaller wings, dark/green elbow accents and a hip holster (Orun Vale styling).",
+      "wr-84": "middling \u2014 ball held high every frame; number 84 clear every frame; no halo visible in any frame; dark faceplate and green hands/gloves (Orun Vale styling).",
+      "ol-60": "middling \u2014 no ball; number 60 clear every frame; halo missing in all 6 frames; frames 4-5 have arms down/out to the sides rather than raised/pumping; frame 6 is turned ~3/4/sideways rather than front-facing.",
+      "ol-72": "good \u2014 no ball; number 72 clear every frame; halo present in all 6 frames; frames 4-5 have arms down/out to the sides rather than raised/pumping; otherwise the cleanest of the OL celebrates."
+    },
+    "block": {
+      "te-88": "good \u2014 arms straight out in front, hands open, palms pushing; number 88 clear in frames 1-2, faint/partly hidden in frames 3-6; frames 1-2 more front-facing, frames 3-6 side profile pushing right with lean increasing, arms extending, feet stepping, wings in a different position every frame.",
+      "ol-55": "middling \u2014 number 55 readable in all 6 frames; frames 5-6 overlap/cross the cell boundary (a foot fragment at the left edge of frame 5's cell, a hand fragment at the left edge of frame 6, wing tips crossing between cells); design drift: more white/silver with green-tinted knee pads, holster-like belt pouch, and a green visor.",
+      "ol-66": "middling \u2014 number 66 clear in frames 4-6; frames 1-2 read as '00'/square glyphs, not 66; frame 3 obscured; frames 1-2 front-facing rather than side profile; frames 3-6 side profile pushing right with increasing lean.",
+      "ol-77": "middling \u2014 number 77 clear in frames 1-2 and 6, partly visible in 5, not visible in frames 3-4; frames 1-2 front-facing with arms bent/down, not yet in block pose; frames 3-6 good: side profile, increasing lean, arms straight out front, feet stepping, wings different every frame.",
+      "flex-33": "good \u2014 number 33 clear in all 6 frames; clear progression from upright to deep forward lean, legs stepping/lunging differently each frame, arms straight out front with open palms, wings changing every frame; frame 3 wing tip touches the top edge."
+    }
+  }
+}

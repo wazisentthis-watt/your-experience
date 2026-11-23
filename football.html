@@ -1132,8 +1132,8 @@ const G = {
 };
 const TEAMS = G.teams; G.fat={}; G.omni=false; G.timeouts=[3,3]; G.runoffPending=0; G.warn=false; G.pat=null; G.conv=null; G.ctlRole='LB1';
 
-function makeTeam(name, c1, c2, human){
-  return {name, c1, c2, human, cards:[], score:0, val:0, armed:false, sel:null, bondCount:0, sigUsed:false,
+function makeTeam(name, c1, c2, human, sheet){
+  return {name, c1, c2, human, sheet: sheet || null, cards:[], score:0, val:0, armed:false, sel:null, bondCount:0, sigUsed:false,
     pairs:[], tune:{contact:60, power:80, reality:50, lineage:30}, sigCount:0, octets:0, to:3, octetT:0, waterWarn:false};
 }
 // ----- Rulebook sliders: Contact / Power / Reality / Lineage are independent 0-100 values -----
@@ -1706,11 +1706,11 @@ function newGame(){
   WIR_M3.reset(); G.oct=null; G.lifeToast=0; G.rtStat={cuts:0,bursts:0,super:0,jam:0,beat:0}; G.matchId='M-'+Date.now().toString(36)+'-'+(++WIR_M3.matchSeq);
   TEAMS.length=0; G.camp=SAVE.camp||null; SAVE.camp=null;
   const SC=SEASON_CTX, SU=SC&&elemTeam(SC.userId);
-  const u=makeTeam(SU?SU.name:(SAVE.teamName||'WIR ALL-STARS'),SU?SU.col:(SAVE.teamCol||'#2de2c4'),'#0b0a1f',true);
+  const u=makeTeam(SU?SU.name:(SAVE.teamName||'WIR ALL-STARS'),SU?SU.col:(SAVE.teamCol||'#2de2c4'),'#0b0a1f',true,SU?SU.sheet:null);
   { const OLD_DEF=['nemzo','metal','hydro','ramen_ra','zukana_requested','mzaro','nixo','kitravo','kairo','jaava','koda'], sv=SAVE.cards; u.cards=((sv&&!(sv.length===OLD_DEF.length&&sv.every((x,i)=>x===OLD_DEF[i])))?sv:defaultCards()).slice(); }   // untouched old default roster upgrades to the legend roster
   if(SAVE.tune) Object.assign(u.tune,SAVE.tune);
   TEAMS.push(u);
-  const od=SC?elemTeam(SC.oppId):pickOppDef(), oc=pick(OPP_COLS), o=makeTeam(od?od.name:pick(OPP_NAMES),od?od.col:oc[0],od?shade(od.col,1.7):oc[1],false);
+  const od=SC?elemTeam(SC.oppId):pickOppDef(), oc=pick(OPP_COLS), o=makeTeam(od?od.name:pick(OPP_NAMES),od?od.col:oc[0],od?shade(od.col,1.7):oc[1],false,od?od.sheet:null);
   TEAMS.push(o);
   o.cards=od?(od.elem?elemCards(od,u.cards):oppCards(od,u.cards)):opponentFor(SAVE.diff);
   if(o.cards.length<8) o.cards=opponentFor(SAVE.diff);
@@ -8293,6 +8293,7 @@ window.__WIR.RT=WIR_RT; window.__WIR.OCT=WIR_OCT;
 <script src="your/v21/hero_football.js"></script>
 <script src="your/v21/eg_hero.js"></script>
 <script src="your/art/eg_hero_poses.js"></script>
+<script src="your/art/celestfur_team_poses.js"></script>
 
 </body>
 </html>
