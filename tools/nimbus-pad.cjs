@@ -120,11 +120,11 @@ const url = 'file://' + path.resolve(repo, 'index.html');
     check('X punches the foe', h1 < h0, { h0, h1 });
     await setup(); h0 = await page.evaluate(() => SIKEE.debug.R.battle.foe.hp);
     await page.evaluate(() => __ax(0, 0, 1, 0)); await sleep(200); await page.evaluate(() => __ax(0, 0, 0, 0)); h1 = await page.evaluate(() => SIKEE.debug.R.battle.foe.hp);
-    check('right-stick flick toward the foe punches it', h1 < h0, { h0, h1 });
+    check('right stick only aims now (Stay On Page layout): a flick does not punch', h1 === h0, { h0, h1 });
     await setup(); const c0 = await page.evaluate(() => SIKEE.debug.R.charge); await tap(7, 100); const c1 = await page.evaluate(() => ({ c: SIKEE.debug.R.charge, shots: SIKEE.debug.R.shots.length }));
     check('RT fires a blast and spends charge', c1.c < c0, { c0, c1 });
-    await setup(); await tap(1, 100); const d1 = await page.evaluate(() => SIKEE.debug.R.p.dodgeCd);
-    check('B dodges (cooldown starts)', d1 > 0, { d1 });
+    await setup(); await page.evaluate(() => { __press(6); }); await sleep(100); await page.evaluate(() => __ax(0, 0, 0, 0)); await sleep(60); await page.evaluate(() => __ax(1, 0, 0, 0)); await sleep(120); const d1 = await page.evaluate(() => SIKEE.debug.R.p.dodgeCd); await page.evaluate(() => { __ax(0, 0, 0, 0); __rel(6); }); await sleep(80);
+    check('LT + left-stick flick rolls (cooldown starts)', d1 > 0, { d1 });
     const pre = await page.evaluate(() => SIKEE.debug.R.p.dodgeCd);
     // fight keeps pad movement
     await setup(); await page.evaluate(() => __ax(1, 0, 0, 0)); const x0 = await page.evaluate(() => WIR_GAME.G.px); await sleep(500); const x1 = await page.evaluate(() => WIR_GAME.G.px); await page.evaluate(() => __ax(0, 0, 0, 0));
