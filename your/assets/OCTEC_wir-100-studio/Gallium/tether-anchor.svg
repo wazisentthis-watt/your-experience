@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" shape-rendering="crispEdges" role="img" aria-label="tether anchor">
+<circle cx="47" cy="17" r="8" fill="#e2d4ff" stroke="#b78dff" stroke-width="3"/><polyline points="44,21 18,19 14,44 44,49" fill="none" stroke="#b78dff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="44" cy="49" r="5" fill="#e2d4ff" stroke="#161a31" stroke-width="2"/>
+</svg>

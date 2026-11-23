@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" shape-rendering="crispEdges" role="img" aria-label="material shield">
+<polygon points="32,5 53,18 50,43 32,57 14,43 11,18" fill="#b78dff" stroke="#161a31" stroke-width="2" stroke-linejoin="round"/><polygon points="32,15 43,24 41,40 32,47 21,40 19,24" fill="#252747" stroke="#161a31" stroke-width="2" stroke-linejoin="round"/><polygon points="32,23 34.25,29.75 41,32 34.25,34.25 32,41 29.75,34.25 23,32 29.75,29.75" fill="#e2d4ff" stroke="#161a31" stroke-width="2" stroke-linejoin="round"/>
+</svg>
