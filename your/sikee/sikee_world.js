@@ -201,8 +201,8 @@
     // Contact always brings MELLA up, so a fight can start on any street or at home without a menu step.
     R.mella = true; R.charge = START_CHARGE; R.blastCool = 0;
     R.p = { atkCd: 0, combo: 0, comboT: 0, dodgeT: 0, dodgeCd: 0, inv: .4, flash: 0, fx: 1, fy: 0, dx: 0, dy: 0, arcT: 0, arcA: 0, arcBig: false };
-    R.shots = []; R.fx = []; R.stop = 0;
-    Object.assign(w, { st: 'idle', stT: 0, cd: .9, kx: 0, ky: 0, face: 1, atk: null, flash: 0, hitstun: 0, ax: 1, ay: 0, hit: false });
+    R.shots = []; R.fx = []; R.stop = 0; R.parts = []; R.slow = 0; R.shake = 0; R.crit = 0;
+    Object.assign(w, { st: 'idle', stT: 0, cd: .9, kx: 0, ky: 0, face: 1, atk: null, flash: 0, hitstun: 0, ax: 1, ay: 0, hit: false, poise: 0, poiseT: 0, brk: 0, root: 0, burn: null });
     R.battle = { foe: w, strike: 0, foeCool: 1, phase: 1, log: [] };
     for (const k in GM().G.keys) GM().G.keys[k] = 0;
     GM().G.path = []; GM().G.go = null;
@@ -230,11 +230,25 @@
     if (canStand(o.x, o.y + dy, r)) o.y += dy;
   }
   function addFx(kind, x, y, extra) { R.fx.push(Object.assign({ kind, x, y, t: 0, max: .35 }, extra || {})); if (R.fx.length > 40) R.fx.shift(); }
+  // Particles: short sparks and shards. Cheap, capped, drawn in drawFight.
+  function addParts(x, y, col, n, spd, life, size) {
+    R.parts = R.parts || [];
+    for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, v = spd * (.4 + Math.random() * .8); R.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, life: life * (.6 + Math.random() * .6), col, size: size || 2 }); }
+    if (R.parts.length > 220) R.parts.splice(0, R.parts.length - 220);
+  }
+  function shake(a) { R.shake = Math.max(R.shake || 0, a); }
+  const poiseMax = f => f.boss ? 130 : 60;
+  function slip() {   // a dodge that lands inside an attack: slow-mo, charge, and your next punch is a crit
+    const p = R.p; if (p.slipCd > 0) return; p.slipCd = .6; p.dodgeCd = 0;
+    R.slow = .6; R.crit = 2.2; R.charge = Math.min(CHARGE_MAX, R.charge + 30);
+    const g = GM().G; addFx('text', g.px, g.py - .9, { text: 'SLIP!', col: '#55ddff', max: .8 }); addFx('ring', g.px, g.py - .2, { col: '#55ddff', max: .4, rad: 1.1 });
+    addParts(g.px, g.py - .2, '#9ff0ff', 14, 5, .45, 2.2); shake(.25); logLine('Slipped it. Your next punch crits.');
+  }
   function atkListFor(f, phase) { return f.boss ? BOSS_ATKS[phase - 1] : (FOE_ATKS[f.def.id] || ['lunge']); }
 
   function hurtPlayer(dmg, dx, dy) {
-    const p = R.p, g = GM().G; if (p.inv > 0) return false;
-    R.hp -= dmg; p.inv = .55; p.flash = .25; R.stop = .05;
+    const p = R.p, g = GM().G; if (p.inv > 0) { if (p.dodgeT > 0) slip(); return false; }
+    R.hp -= dmg; shake(.3); addParts(g.px, g.py - .3, '#ff6b6b', 8, 4, .35, 2); p.inv = .55; p.flash = .25; R.stop = .05;
     const l = Math.hypot(dx, dy) || 1, me = { x: g.px, y: g.py };
     nudge(me, dx / l * .9, dy / l * .9, .3); g.px = me.x; g.py = me.y;
     addFx('num', g.px, g.py - .6, { text: '-' + dmg, col: '#ff6b6b', max: .7 });
@@ -242,14 +256,26 @@
     if (R.hp <= 0) { lose(); return true; }
     return true;
   }
-  function damageFoe(f, dmg, dx, dy, knock, stagger) {
+  function damageFoe(f, dmg, dx, dy, knock, stagger, opts) {
+    opts = opts || {}; let crit = false;
+    if (opts.melee && R.crit > 0) { dmg = Math.round(dmg * 2); stagger = Math.max(stagger || 0, .5); R.crit = 0; crit = true; }
+    if (f.brk > 0 && !opts.dot) dmg = Math.round(dmg * 1.5);
     f.hp -= dmg; f.flash = .18; const l = Math.hypot(dx, dy) || 1;
     f.kx = dx / l * knock * 6; f.ky = dy / l * knock * 6;
     const armor = f.boss && R.battle.phase >= 2 && f.st === 'wind';
     if (stagger && !armor) { f.st = 'stagger'; f.stT = stagger; f.atk = null; } else f.hitstun = Math.max(f.hitstun, .12);
-    addFx('num', f.x, f.y - .9, { text: String(dmg), col: '#ffe066', max: .6 });
-    addFx('ring', f.x, f.y - .3, { col: '#ffffff', max: .25, rad: .7 });
+    addFx('num', f.x, f.y - .9, { text: crit ? 'CRIT ' + dmg : String(dmg), col: crit ? '#ff9ad5' : opts.col || '#ffe066', max: .6 });
+    addFx('ring', f.x, f.y - .3, { col: opts.col || '#ffffff', max: .25, rad: .7 });
+    const heavy = crit || (stagger || 0) >= .5 || dmg >= 20;
+    addParts(f.x, f.y - .4, crit ? '#ff9ad5' : opts.col || (heavy ? '#ffe066' : '#ffffff'), heavy ? 14 : 7, heavy ? 6 : 4, .4, heavy ? 2.6 : 2); if (heavy) shake(.35); else shake(.12);
+    // poise: enough damage in a short time breaks the guard; a broken foe takes 1.5x and is stunned
+    if (!opts.dot && f.brk <= 0) { f.poise += dmg * (f.boss ? .6 : 1); f.poiseT = 1.6;
+      if (f.poise >= poiseMax(f)) { f.poise = 0; f.brk = 1.3; f.st = 'stagger'; f.stT = 1.3; f.atk = null; R.stop = Math.max(R.stop, .12); shake(.5);
+        addFx('text', f.x, f.y - 1.3, { text: 'BREAK', col: '#ffd24a', max: .9 }); addFx('ring', f.x, f.y - .3, { col: '#ffd24a', max: .45, rad: 1.4 }); addParts(f.x, f.y - .4, '#ffd24a', 18, 6.5, .5, 2.6); logLine(f.def.name + ' is guard broken.'); } }
     if (f.hp <= 0) win();
+  }
+  function dotFoe(f, n, col) {
+    f.hp -= n; addFx('num', f.x, f.y - .9, { text: String(n), col: col || '#ff8a3d', max: .5 }); addParts(f.x, f.y - .5, col || '#ff8a3d', 3, 2, .35, 2); if (f.hp <= 0) win();
   }
 
   function foeStep(f, dt) {
@@ -257,6 +283,7 @@
     f.flash = Math.max(0, f.flash - dt);
     if (Math.abs(f.kx) + Math.abs(f.ky) > .05) { nudge(f, f.kx * dt, f.ky * dt, FOE_R * .6); const d = Math.pow(.0005, dt); f.kx *= d; f.ky *= d; }
     let dx = g.px - f.x, dy = g.py - f.y; const dist = Math.hypot(dx, dy) || 1, ux = dx / dist, uy = dy / dist;
+    if (f.root > 0) f.root -= dt;
     if (f.hitstun > 0) { f.hitstun -= dt; return; }
     const ph = f.boss ? b.phase : 1, list = atkListFor(f, ph), spd = (FOE_SPEED[f.def.id] || 2) * (f.boss && ph === 3 ? 1.25 : 1);
     const ranged = list.length === 1 && list[0] === 'orb' || f.def.id === 'buibui';
@@ -264,7 +291,8 @@
     if (f.st === 'idle') {
       f.face = ux >= 0 ? 1 : -1;
       const bx = f.x, by = f.y;
-      if (ranged) {
+      if (f.root > 0) { /* held in place: cannot walk */ }
+      else if (ranged) {
         if (dist < 2.6) nudge(f, -ux * spd * dt, -uy * spd * dt, FOE_R * .6);
         else if (dist > 4.5) nudge(f, ux * spd * dt, uy * spd * dt, FOE_R * .6);
       } else if (dist > 1.3) nudge(f, ux * spd * dt, uy * spd * dt, FOE_R * .6);
@@ -299,7 +327,8 @@
     } else if (f.st === 'act') {
       f.stT -= dt;
       if (f.atk.id === 'lunge' || f.atk.id === 'dash') {
-        nudge(f, f.ax * f.atk.reach / f.atk.act * dt, f.ay * f.atk.reach / f.atk.act * dt, FOE_R * .6);
+        if (f.root <= 0) nudge(f, f.ax * f.atk.reach / f.atk.act * dt, f.ay * f.atk.reach / f.atk.act * dt, FOE_R * .6);
+        if (Math.random() < .8) addFx('foeghost', f.x, f.y, { max: .22, col: f.def.col });
         if (!f.hit && Math.hypot(g.px - f.x, g.py - f.y) < f.atk.rad + PL_R * .6) { f.hit = hurtPlayer(f.boss ? SIKEE_PHASES[ph - 1].dmg : f.def.dmg, f.ax, f.ay) || f.hit; }
       }
       if (f.stT <= 0) { f.st = 'rec'; f.stT = f.atk.rec; }
@@ -309,9 +338,20 @@
     }
   }
 
-  function battleTick(dt) {
-    const b = R.battle, f = b.foe, g = GM().G, p = R.p;
+  function vfxTick(dt) {
     for (const e of R.fx) e.t += dt; R.fx = R.fx.filter(e => e.t < e.max);
+    for (const q of R.parts || []) { q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt; q.vx *= Math.pow(.02, dt); q.vy *= Math.pow(.02, dt); } R.parts = (R.parts || []).filter(q => q.t < q.life);
+    const cv = GM().cx && GM().cx.canvas; if (cv) { if (R.shake > .01) { R.shake = Math.max(0, R.shake - dt * 2.2); const m = R.shake * 9; cv.style.transform = 'translate(' + ((Math.random() - .5) * m).toFixed(1) + 'px,' + ((Math.random() - .5) * m).toFixed(1) + 'px)'; } else if (cv.style.transform) { R.shake = 0; cv.style.transform = ''; } }
+  }
+  function battleTick(real) {
+    const b = R.battle, f = b.foe, g = GM().G, p = R.p;
+    vfxTick(real);
+    let dt = real; if (R.slow > 0) { R.slow -= real; dt = real * .35; }
+    p.slipCd = Math.max(0, (p.slipCd || 0) - dt);
+    if (f.poiseT > 0) f.poiseT -= dt; else f.poise = Math.max(0, f.poise - 12 * dt);
+    if (f.brk > 0) f.brk -= dt;
+    if (f.burn) { f.burn.t -= dt; f.burn.acc += dt; R.crit = R.crit; if (f.burn.acc >= .5) { f.burn.acc = 0; dotFoe(f, f.burn.dps, '#ff8a3d'); if (!R.battle) return; } if (f.burn.t <= 0) f.burn = null; }
+    if (R.crit > 0) R.crit = Math.max(0, R.crit - dt);
     if (R.stop > 0) { R.stop -= dt; updateBattleUI(); return; }      // short hit-stop on impact
     R.blastCool = Math.max(0, R.blastCool - dt);
     p.atkCd = Math.max(0, p.atkCd - dt); p.comboT = Math.max(0, p.comboT - dt); p.inv = Math.max(0, p.inv - dt);
@@ -329,12 +369,14 @@
     }
     foeStep(f, dt);
     if (!R.battle) return;
+    if (window.WISHBORN && WISHBORN.fightTick) { try { WISHBORN.fightTick(dt, API); } catch (e) { } }
+    if (!R.battle) return;
     // shots
     for (const s of R.shots) {
-      s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt;
+      s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; if (s.from === 'p' && Math.random() < .9) addParts(s.x, s.y - .2, s.col, 1, .8, .3, 2);
       if (!GM().walkable(g.map, Math.floor(s.x), Math.floor(s.y))) s.life = 0;
       if (s.from === 'p') {
-        if (Math.hypot(s.x - f.x, s.y - f.y) < FOE_R + s.r) { s.life = 0; damageFoe(f, s.dmg, s.vx, s.vy, 1.0, .4); logLine('Blast hits ' + f.def.name + ' for ' + s.dmg + '.'); if (!R.battle) return; }
+        if (Math.hypot(s.x - f.x, s.y - f.y) < FOE_R + s.r) { s.life = 0; damageFoe(f, s.dmg, s.vx, s.vy, 1.0, .4, { col: '#55ddff' }); logLine('Blast hits ' + f.def.name + ' for ' + s.dmg + '.'); if (!R.battle) return; }
       } else if (Math.hypot(s.x - g.px, s.y - g.py) < PL_R + s.r) { s.life = 0; if (hurtPlayer(s.dmg, s.vx, s.vy) && !R.battle) return; }
     }
     R.shots = R.shots.filter(s => s.life > 0);
@@ -342,6 +384,19 @@
   }
 
   // Punch: a 3-hit combo. The third hit is heavier and staggers. Auto-aims at a foe in reach.
+  // What allies (WishBorn followers, Veyru) can do in a street fight. They decide for themselves when and whether.
+  const API = {
+    active: () => !!R.battle, foe: () => R.battle && R.battle.foe, hero: () => ({ x: GM().G.px, y: GM().G.py }), hp: () => R.hp, maxHp: () => HOME_HP,
+    heal(n) { R.hp = Math.min(HOME_HP, R.hp + n); const g = GM().G; addFx('num', g.px, g.py - .8, { text: '+' + n, col: '#76e086', max: .7 }); addFx('ring', g.px, g.py - .2, { col: '#76e086', max: .45, rad: 1 }); addParts(g.px, g.py - .3, '#76e086', 10, 2.5, .6, 2.4); },
+    hit(n, col, opts) { const f = R.battle && R.battle.foe; if (f) damageFoe(f, n, f.x - GM().G.px, f.y - GM().G.py, .4, 0, Object.assign({ col }, opts || {})); },
+    stagger(t) { const f = R.battle && R.battle.foe; if (!f || f.st === 'stagger') return; f.st = 'stagger'; f.stT = t; f.atk = null; },
+    root(t) { const f = R.battle && R.battle.foe; if (!f) return; f.root = Math.max(f.root || 0, t); addFx('ring', f.x, f.y, { col: '#6fcf7a', max: t, rad: .9 }); addParts(f.x, f.y, '#6fcf7a', 8, 2, .6, 2.2); },
+    burn(dps, t) { const f = R.battle && R.battle.foe; if (f) f.burn = { dps, t, acc: 0 }; },
+    push(k) { const f = R.battle && R.battle.foe, g = GM().G; if (!f) return; const dx = f.x - g.px, dy = f.y - g.py, l = Math.hypot(dx, dy) || 1; f.kx = dx / l * k * 6; f.ky = dy / l * k * 6; },
+    beam(x1, y1, x2, y2, col) { addFx('beam', x1, y1, { x2, y2, col, max: .28 }); },
+    burst(x, y, col, n) { addParts(x, y, col, n || 10, 4, .45, 2.4); }, text(x, y, t, col) { addFx('text', x, y, { text: t, col, max: .8 }); },
+    log: logLine, shake,
+  };
   function strike() {
     const b = R.battle; if (!b) return; const f = b.foe, g = GM().G, p = R.p;
     if (!R.mella) { logLine('Enter MELLA (M) first.'); updateBattleUI(); return; }
@@ -360,7 +415,7 @@
       R.charge = Math.min(CHARGE_MAX, R.charge + PUNCH_CHARGE);
       logLine((big ? 'Heavy hit' : 'You punch') + ' ' + f.def.name + ' for ' + dmg + '.');
       R.stop = big ? .09 : .05;
-      damageFoe(f, dmg, p.fx, p.fy, big ? 1.3 : .5, big ? .5 : 0);
+      damageFoe(f, dmg, p.fx, p.fy, big ? 1.3 : .5, big ? .5 : 0, { melee: true });
     } else p.atkCd += .1;     // whiff recovery
     updateBattleUI();
   }
@@ -375,6 +430,7 @@
     R.charge -= BLAST_COST; R.blastCool = BLAST_CD;
     R.shots.push({ x: g.px, y: g.py - .2, vx: dx * 10, vy: dy * 10, from: 'p', dmg: BLAST_DMG, life: .9, r: .4, col: '#55ddff' });
     addFx('ring', g.px + dx * .5, g.py - .2, { col: '#55ddff', max: .2, rad: .5 });
+    addParts(g.px + dx * .5, g.py - .2, '#9ff0ff', 8, 4, .25, 2); shake(.08);
     logLine('Blast fired.'); updateBattleUI();
   }
   // Dodge: a quick dash with a moment of invulnerability. Use it to leave a red marker.
@@ -385,7 +441,7 @@
     const pd = g.pad || {}; let dx = kx || (Math.abs(pd.ax) > .3 ? Math.sign(pd.ax) : 0), dy = ky || (Math.abs(pd.ay) > .3 ? Math.sign(pd.ay) : 0);
     if (!dx && !dy) { dx = g.px - f.x; dy = g.py - f.y; }   // no input: back away from the foe
     const l = Math.hypot(dx, dy) || 1; p.dx = dx / l; p.dy = dy / l;
-    p.dodgeT = DODGE_T; p.dodgeCd = DODGE_CD; p.inv = Math.max(p.inv, .32);
+    p.dodgeT = DODGE_T; p.dodgeCd = DODGE_CD; p.inv = Math.max(p.inv, .32); addParts(g.px, g.py + .1, '#d9d4c8', 6, 2.5, .3, 2);
     updateBattleUI();
   }
   function run() {
@@ -432,6 +488,7 @@
       R.dist = 0; R.lastX = undefined; R.lastY = undefined;
     }
     if (!R.battle) R.hp = Math.min(HOME_HP, R.hp + dt * 1.5);
+    if (!R.battle && ((R.fx && R.fx.length) || (R.parts && R.parts.length) || R.shake)) vfxTick(dt);
     // status line: wrecks and loose villains on this map
     R.stT = (R.stT || 0) - dt;
     if (R.stT <= 0 && R.hud) {
@@ -606,16 +663,16 @@
   }
   // Your punch arc, blasts, enemy shots, hit rings, damage numbers and dodge ghosts.
   function drawFight() {
-    const b = R.battle; if (!b) return; const c = GM().cx, T = GM().T, g = GM().G, p = R.p;
+    const b = R.battle; if (!b && !((R.fx && R.fx.length) || (R.parts && R.parts.length))) return; const c = GM().cx, T = GM().T, g = GM().G, p = R.p || { arcT: 0 };
     c.save();
-    if (p.arcT > 0) {
+    if (b && p.arcT > 0) {
       const k = p.arcT / .18, r = (p.arcBig ? 1.7 : 1.35) * T;
       c.translate(g.px * T, g.py * T - 8); c.rotate(p.arcA);
       c.strokeStyle = p.arcBig ? 'rgba(255,214,102,' + k + ')' : 'rgba(255,255,255,' + k + ')'; c.lineWidth = p.arcBig ? 6 : 4;
       c.beginPath(); c.arc(0, 0, r * (1.1 - .4 * k), -.9, .9); c.stroke();
     }
     c.restore(); c.save();
-    for (const s of R.shots) {
+    for (const s of (R.shots || [])) {
       c.fillStyle = s.col; c.shadowColor = s.col; c.shadowBlur = 10;
       c.beginPath(); c.arc(s.x * T, s.y * T - 6, s.r * T * .75, 0, 7); c.fill();
     }
@@ -624,7 +681,21 @@
       const k = e.t / e.max, X = e.x * T, Y = e.y * T;
       if (e.kind === 'ring') { c.strokeStyle = e.col; c.globalAlpha = 1 - k; c.lineWidth = 3; c.beginPath(); c.arc(X, Y, (e.rad || .6) * T * (.4 + k), 0, 7); c.stroke(); }
       else if (e.kind === 'num') { c.globalAlpha = 1 - k * k; c.fillStyle = e.col; c.strokeStyle = '#000'; c.lineWidth = 3; c.font = 'bold 13px system-ui,sans-serif'; c.textAlign = 'center'; c.strokeText(e.text, X, Y - k * 22); c.fillText(e.text, X, Y - k * 22); }
+      else if (e.kind === 'text') { c.globalAlpha = 1 - k * k; c.fillStyle = e.col; c.strokeStyle = '#000'; c.lineWidth = 4; c.font = '900 ' + Math.round(20 + 8 * (1 - k)) + 'px system-ui,sans-serif'; c.textAlign = 'center'; c.strokeText(e.text, X, Y - k * 26); c.fillText(e.text, X, Y - k * 26); }
+      else if (e.kind === 'beam') { c.globalAlpha = 1 - k; c.strokeStyle = e.col; c.shadowColor = e.col; c.shadowBlur = 12; c.lineWidth = 5 * (1 - k) + 1; c.beginPath(); c.moveTo(X, Y - 10); c.lineTo(e.x2 * T, e.y2 * T - 10); c.stroke(); c.shadowBlur = 0; }
+      else if (e.kind === 'foeghost') { c.globalAlpha = .3 * (1 - k); c.fillStyle = e.col; c.beginPath(); c.ellipse(X, Y - 10, 11, 17, 0, 0, 7); c.fill(); }
       else if (e.kind === 'ghost') { c.globalAlpha = .35 * (1 - k); c.fillStyle = '#55ddff'; c.beginPath(); c.ellipse(X, Y - 4, 7, 12, 0, 0, 7); c.fill(); }
+    }
+    c.globalAlpha = 1;
+    for (const q of R.parts || []) { const k = q.t / q.life; c.globalAlpha = Math.max(0, 1 - k); c.fillStyle = q.col; const sz = q.size * (1 - k * .5); c.fillRect(q.x * T - sz / 2, q.y * T - 10 - sz / 2, sz, sz); }
+    c.globalAlpha = 1;
+    if (b) { const f = b.foe, X = f.x * T, Y = f.y * T;
+      if (f.poise > 0 || f.brk > 0) { const w = 34, pr = f.brk > 0 ? 1 : Math.min(1, f.poise / poiseMax(f)); c.fillStyle = 'rgba(0,0,0,.55)'; c.fillRect(X - w / 2, Y - 50, w, 4); c.fillStyle = f.brk > 0 ? '#ffd24a' : '#e8c46a'; c.fillRect(X - w / 2, Y - 50, w * pr, 4); }
+      if (f.root > 0) { c.strokeStyle = '#6fcf7a'; c.lineWidth = 3; c.beginPath(); c.ellipse(X, Y + 2, 16, 6, 0, 0, 7); c.stroke(); }
+      if (f.burn && Math.random() < .5) addParts(f.x + (Math.random() - .5) * .5, f.y - .5, '#ff8a3d', 1, 1.2, .35, 2);
+      if (f.st === 'wind' && f.atk) { c.strokeStyle = 'rgba(255,90,90,.7)'; c.lineWidth = 2; c.beginPath(); c.arc(X, Y - 12, 18 + 6 * Math.sin(performance.now() / 60), 0, 7); c.stroke(); }
+      if (R.slow > 0) { c.save(); c.setTransform(1, 0, 0, 1, 0, 0); const cw = c.canvas.width, ch = c.canvas.height, gr = c.createRadialGradient(cw / 2, ch / 2, Math.min(cw, ch) * .3, cw / 2, ch / 2, Math.max(cw, ch) * .7); gr.addColorStop(0, 'rgba(85,221,255,0)'); gr.addColorStop(1, 'rgba(40,120,200,' + Math.min(.35, R.slow * .6) + ')'); c.fillStyle = gr; c.fillRect(0, 0, cw, ch); c.restore(); }
+      if (R.crit > 0) { c.fillStyle = 'rgba(255,154,213,.9)'; c.font = 'bold 10px system-ui'; c.textAlign = 'center'; c.fillText('CRIT READY', g.px * T, g.py * T - 34); }
     }
     c.restore();
   }
@@ -705,7 +776,7 @@
       'body.sk-fight #yourMoves,body.sk-fight #yourPowers{display:none !important}' +
       'body:has(#your-touch[style*="display: block"]) .sk-btns{bottom:calc(min(100vw,100vh) * .3 + 10px)}' +
       '#sikeeHud .mella{border-color:#ff9ad5;color:#ff9ad5}' +
-      '.sk-ch i{background:#55ddff}';
+      '.sk-ch i{background:#55ddff}.sk-po i{background:#ffd24a}';
     document.head.appendChild(css);
 
     const hud = document.createElement('div'); hud.id = 'sikeeHud';
@@ -717,18 +788,19 @@
     const bat = document.createElement('div'); bat.id = 'sikeeBattle'; bat.hidden = true;
     bat.innerHTML = '<div class="sk-box"><div><b id="skFoe"></b> <span id="skTitle" style="opacity:.7;font-size:11px"></span></div>' +
       '<div class="sk-bar"><i id="skFoeBar"></i></div><div class="sk-bar sk-me"><i id="skMeBar"></i></div>' +
-      '<div class="sk-bar sk-ch"><i id="skChargeBar"></i></div><div class="sk-log" id="skLog"></div></div>' +
+      '<div class="sk-bar sk-ch"><i id="skChargeBar"></i></div><div class="sk-bar sk-po" style="height:4px"><i id="skPoise" style="width:0"></i></div><div class="sk-log" id="skLog"></div></div>' +
       '<div class="sk-btns"><button type="button" id="skRun">Run<br>X</button><button type="button" id="skMella2" hidden>Mella (M)</button>' +
-      '<button type="button" id="skDodge">Dodge<br>Space</button><button type="button" id="skBlast">Blast<br>B</button><button type="button" id="skStrike">Punch<br>J</button></div>';
+      '<button type="button" id="skKawCall">KAW<br>V</button><button type="button" id="skDodge">Dodge<br>Space</button><button type="button" id="skBlast">Blast<br>B</button><button type="button" id="skStrike">Punch<br>J</button></div>';
     document.body.appendChild(bat);
     bat.querySelector('#skDodge').onclick = dodge;
+    bat.querySelector('#skKawCall').onclick = callKaw;
     bat.querySelector('#skStrike').onclick = strike;
     bat.querySelector('#skBlast').onclick = blast;
     bat.querySelector('#skMella2').onclick = toggleMella;
     bat.querySelector('#skRun').onclick = run;
     R.hud = { hud, bat };
   }
-  function showBattle(on) { if (R.hud) R.hud.bat.hidden = !on; if (document.body) document.body.classList.toggle('sk-fight', !!on); if (on) updateBattleUI(); }
+  function showBattle(on) { if (!on) { R.shake = 0; const cv = GM().cx && GM().cx.canvas; if (cv) cv.style.transform = ''; } if (R.hud) R.hud.bat.hidden = !on; if (document.body) document.body.classList.toggle('sk-fight', !!on); if (on) updateBattleUI(); }
   function updateBattleUI() {
     if (!R.hud || !R.battle) return;
     const b = R.battle, f = b.foe;
@@ -740,10 +812,12 @@
     q('skLog').textContent = b.log.join(' · ');
     q('skMella2').textContent = R.mella ? 'Mella on (M)' : 'Mella off (M)';
     q('skStrike').disabled = !R.mella; q('skDodge').disabled = R.p.dodgeCd > 0;
+    q('skPoise').style.width = Math.min(100, 100 * f.poise / poiseMax(f)) + '%';
     q('skChargeBar').style.width = Math.max(0, 100 * R.charge / CHARGE_MAX) + '%';
     q('skBlast').disabled = !R.mella || R.charge < BLAST_COST || R.blastCool > 0;
     q('skBlast').innerHTML = R.blastCool > 0 ? 'Blast<br>…' : 'Blast<br>' + Math.floor(R.charge) + '%';
   }
+  function callKaw() { if (!R.battle) return; if (window.WISHBORN && WISHBORN.fightCall) WISHBORN.fightCall(API); else logLine('Nobody to call.'); updateBattleUI(); }
   function toggleMella() {
     // A fight always keeps MELLA up, so an accidental M cannot disarm you mid-fight.
     if (R.battle && R.mella) { logLine('MELLA stays up until the fight ends.'); updateBattleUI(); return; }
@@ -763,7 +837,7 @@
       // Movement keys fall through to the game so you can walk while you fight. Everything else is ours.
       // The Y.O.U.R. layer binds J (hit), L (blast), Q (jump), C, T, 1-3 (powers), Shift/K (dash/sprint), F (fly), H/Z (KAW).
       // In a fight those keys belong to the fight only, so stop them reaching the other layers.
-      const mine = { j: strike, b: blast, ' ': dodge, shift: dodge, m: toggleMella, x: run };
+      const mine = { j: strike, b: blast, ' ': dodge, shift: dodge, m: toggleMella, x: run, v: callKaw };
       if (mine[k]) { if (!e.repeat || k === 'j') mine[k](); e.preventDefault(); e.stopImmediatePropagation(); }
       else if (['e', 'r', 'p', 'k', 'g', 'escape', 'q', 'l', 'c', 't', '1', '2', '3', 'f', 'h', 'z'].includes(k)) { e.preventDefault(); e.stopImmediatePropagation(); }
       return;
@@ -782,9 +856,9 @@
     act(name, ax, ay) {
       if (!R.battle) return false;
       if ((ax || ay) && R.p) { const l = Math.hypot(ax, ay) || 1; R.p.fx = ax / l; R.p.fy = ay / l; }
-      ({ strike, blast, dodge, run })[name]?.(); return true;
+      ({ strike, blast, dodge, run, kaw: callKaw })[name]?.(); return true;
     },
     wreckSlow,
-    debug: { R, st, dodge, plantStage, spawnRoadVillain, spawnSikeeOnRoad, startBattle, homeIntruder, strike, blast, commitCrime, wreckCount, startRepair, tickUpkeep },
+    debug: { R, API, st, dodge, callKaw, plantStage, spawnRoadVillain, spawnSikeeOnRoad, startBattle, homeIntruder, strike, blast, commitCrime, wreckCount, startRepair, tickUpkeep },
   };
 })();

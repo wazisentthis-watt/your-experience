@@ -150,7 +150,9 @@
   function tickFollowers(dt) {
     const s = st(), G = GM().G, m = G.map; if (G.map.id === 'HOME') return;
     if (R.followers.length !== s.accord.length) followerObjs();
+    const inFight = performance.now() - (R.fightAt || -1e9) < 400;
     R.followers.forEach((f, i) => {
+      if (inFight) return;
       f.anim += dt * (f.moving ? 7 : 1.5); f.stT -= dt; if (f.emoteT > 0) f.emoteT -= dt; else f.emote = '';
       if (f.a.energy == null) f.a.energy = 1; f.a.energy = Math.min(1, f.a.energy + dt * .004); const dh = H(G.px - f.x, G.py - f.y), hung = Date.now() - (f.a.fedAt || 0) > HUNGRY_MS * .66;
       if (dh > 14) { f.x = G.px - .8; f.y = G.py + .8; f.st = 'follow'; }
@@ -228,6 +230,83 @@
       if (needsCare) { R.wilds = R.wilds.filter(x => x !== w); } GM().save(); R.panel = null; render();
     },
   };
+
+
+  // ---- fights: allies help with their own power, on their own timing, and may say no ----
+  const FX_COL = { shock: '#7fd7ff', burn: '#ff8a3d', snare: '#6fcf7a', stagger: '#e8f0ff', heal: '#76e086' };
+  const FX_NAME = { shock: 'Zap', burn: 'Ember', snare: 'Root', stagger: 'Shove', heal: 'Mend' };
+  const ASSIST_CD = 7, ASSIST_NEAR = 9;
+  const clampN = (v, a, b) => Math.max(a, Math.min(b, v));
+  // Veyru (Water + Plant) joins through his own brain state: willingness uses the same inputs as his recall rule.
+  function veyru() {
+    const V = window.YOUR_V24, G = GM().G; if (!V || !V.state) return null; let v; try { v = V.state(); } catch (e) { return null; }
+    if (!v || !v.accompanied || v.currentMap !== G.map.id) return null;
+    const n = v.needs || {}, t = v.traits || {};
+    const will = clampN(.32 + (v.bond || 0) * .006 + (t.sociability || 0) * .0025 - (n.restNeed || 0) * .003 - (n.fear || 0) * .003 - ((n.hunger || 0) > 70 ? .15 : 0), .04, .96);
+    return { key: 'veyru', name: v.name || 'Veyru', fx: 'veyru', will, v, get cd() { return R.vcd || 0; }, set cd(x) { R.vcd = x; } };
+  }
+  function assistants() {
+    const out = R.followers.filter(f => f.st !== 'power').map(f => {
+      const hungry = Date.now() - (f.a.fedAt || 0) > HUNGRY_MS * .66, tired = (f.a.energy == null ? 1 : f.a.energy) < .25;
+      return { key: f.sp.id, name: f.sp.name, fx: f.sp.fx, f, will: clampN(.62 + Math.min(3, f.a.restores || 0) * .06 - (hungry ? .3 : 0) - (tired ? .3 : 0), .05, .95), hungry, tired, get cd() { return f.fcd || 0; }, set cd(x) { f.fcd = x; } };
+    });
+    const vy = veyru(); if (vy) out.push(vy); return out;
+  }
+  const posOf = a => a.f ? { x: a.f.x, y: a.f.y } : (() => { const h = GM().G; return { x: h.px - 1.1, y: h.py + .4 }; })();
+  function cast(a, api, why) {
+    const foe = api.foe(), hero = api.hero(), pos = posOf(a); if (!foe) return false;
+    let fx = a.fx; if (fx === 'veyru') fx = api.hp() < api.maxHp() * .55 ? 'heal' : (foe.st === 'wind' ? 'snare' : 'heal'); // Water mends, Plant roots
+    const col = FX_COL[fx], dfoe = H(foe.x - hero.x, foe.y - hero.y);
+    if (fx === 'heal') { api.beam(pos.x, pos.y, hero.x, hero.y, col); api.heal(12); }
+    else if (fx === 'shock') { api.beam(pos.x, pos.y, foe.x, foe.y, col); api.hit(8, col); api.stagger(.6); api.burst(foe.x, foe.y - .4, col, 10); }
+    else if (fx === 'burn') { api.beam(pos.x, pos.y, foe.x, foe.y, col); api.hit(6, col); api.burn(3, 3.0); }
+    else if (fx === 'snare') { api.beam(pos.x, pos.y, foe.x, foe.y, col); api.root(1.8); if (foe.st === 'wind') { foe.st = 'idle'; foe.atk = null; foe.cd = 1.2; } }
+    else if (fx === 'stagger') { api.beam(pos.x, pos.y, foe.x, foe.y, col); api.push(1.4); if (foe.st === 'wind') { foe.st = 'stagger'; foe.stT = .7; foe.atk = null; } api.hit(5, col); }
+    api.text(pos.x, pos.y - 1, FX_NAME[fx] + '!', col); api.shake(.1);
+    a.cd = ASSIST_CD + Math.random() * 2;
+    if (a.f) { a.f.st = 'call'; a.f.stT = .5; a.f.emote = '✦'; a.f.emoteT = 1; a.f.a.energy = Math.max(0, (a.f.a.energy == null ? 1 : a.f.a.energy) - .1); a.f.dir = foe.x > a.f.x ? 1 : -1; }
+    else if (a.v && a.v.needs) a.v.needs.restNeed = Math.min(100, (a.v.needs.restNeed || 0) + 6);
+    api.log(a.name + ' used ' + FX_NAME[fx] + (why === 'called' ? ' (you called)' : ' (its own call)') + '.'); st().assists = (st().assists || 0) + 1;
+    if (a.f) emit('assist', { sp: a.f.sp, fx, n: st().assists });
+    return true;
+  }
+  // each ally decides by itself every beat: help only when its power fits the moment
+  function wantsToHelp(a, api) {
+    const foe = api.foe(), hero = api.hero(), d = H(foe.x - hero.x, foe.y - hero.y), hurt = api.hp() < api.maxHp() * .45, wind = foe.st === 'wind' && foe.atk;
+    const fx = a.fx === 'veyru' ? (hurt ? 'heal' : wind ? 'snare' : null) : a.fx;
+    if (fx === 'heal') return hurt;
+    if (fx === 'snare' || fx === 'stagger') return !!wind && d < 4.5;
+    if (fx === 'shock') return !!wind && d < 7;
+    if (fx === 'burn') return !foe.burn && d < 7 && foe.st !== 'stagger';
+    return false;
+  }
+  function fightTick(dt, api) {
+    R.fightAt = performance.now(); const hero = api.hero(), foe = api.foe(); if (!foe) return;
+    const list = assistants();
+    for (const a of list) {
+      a.cd = Math.max(0, a.cd - dt);
+      if (a.f) { // stand off to the side at a safe distance and face the foe
+        const f = a.f, ang = Math.atan2(foe.y - hero.y, foe.x - hero.x) + (R.followers.indexOf(f) ? -1.9 : 1.9), tx = hero.x + Math.cos(ang) * 2.4, ty = hero.y + Math.sin(ang) * 2.4;
+        if (f.st === 'call') { f.stT -= dt; if (f.stT <= 0) f.st = 'follow'; } else { f.st = 'follow'; if (H(tx - f.x, ty - f.y) > .5) moveTo(f, tx, ty, 3, dt); else f.moving = false; }
+        if (H(foe.x - f.x, foe.y - f.y) < 1.4) { const ax = f.x - foe.x, ay = f.y - foe.y, l = H(ax, ay) || 1; moveTo(f, f.x + ax / l * 2, f.y + ay / l * 2, 3.4, dt); } // keeps clear of the foe
+        f.anim += dt * (f.moving ? 7 : 1.5);
+      }
+      a.think = (a.think || 0) - dt; if (a.cd > 0 || (a.think || 0) > 0) continue; a.think = .5 + Math.random() * .3;
+      if (a.f && a.f.shy > 0) { a.f.shy -= dt; continue; }
+      if (H(posOf(a).x - hero.x, posOf(a).y - hero.y) > ASSIST_NEAR) continue;
+      if (a.tired || !wantsToHelp(a, api)) continue;
+      if (Math.random() < a.will * .6) cast(a, api, 'own'); else { a.cd = 2; if (a.f) { a.f.emote = '…'; a.f.emoteT = 1; } }
+    }
+  }
+  function fightCall(api) {
+    const foe = api.foe(), hero = api.hero(); if (!foe) return;
+    const list = assistants(); if (!list.length) { api.log('Nobody is walking with you to call.'); GM().toast('Nobody is walking with you. Bond with a KAW first.'); return; }
+    const near = list.filter(a => H(posOf(a).x - hero.x, posOf(a).y - hero.y) <= ASSIST_NEAR); if (!near.length) { api.log('Nobody is close enough to hear you.'); return; }
+    const ready = near.filter(a => a.cd <= 0); if (!ready.length) { api.log('They need a moment.'); return; }
+    const a = ready.sort((x, y) => (wantsToHelp(y, api) ? 1 : 0) - (wantsToHelp(x, api) ? 1 : 0))[0];
+    if (Math.random() < a.will) cast(a, api, 'called');
+    else { a.cd = 3; if (a.f) { a.f.emote = '…'; a.f.emoteT = 1.5; } api.log(a.name + ' heard you and holds back' + (a.hungry ? ' (hungry)' : a.tired ? ' (tired)' : '') + '.'); GM().toast(a.name + ' holds back. ' + (a.hungry ? 'It seems hungry.' : a.tired ? 'It seems tired.' : 'Not now.')); }
+  }
 
   // ---- UI ----
   function css() {
@@ -328,6 +407,6 @@
   }
   function enterMap() { R.map = null; R.panel = null; if (R.panelEl) render(); }
 
-  window.WISHBORN = { on: f => listeners.push(f), tick, drawList, use, enterMap, state: st, species: SP, get wilds() { return R.wilds; }, get followers() { return R.followers; }, get fixtures() { return R.fixtures; },
+  window.WISHBORN = { fightTick, fightCall, assistants, on: f => listeners.push(f), tick, drawList, use, enterMap, state: st, species: SP, get wilds() { return R.wilds; }, get followers() { return R.followers; }, get fixtures() { return R.fixtures; },
     _t: { FIX, restored, askFollower, restoreFix, beginPower, seedFixtures, thinkWild, offer, invite, rescue, pFriendly, beat, spawn, part, feedFollower, whistle, R, rec, FEED, TEMP, followerObjs } };
 })();
