@@ -24,11 +24,25 @@
     shore: 'Shore Law: never pull from the water.', highlands: 'Highland Law: no chasing on ledges.' };
   const listeners = [];
   const emit = (type, d) => { for (const f of listeners) { try { f(type, d || {}); } catch (e) { } } };
-  const R = { wilds: [], map: null, spawnT: 3, uid: 1, panel: null, hud: null, followers: [], hx: 0, hy: 0, hint: null };
+  // Fixtures: dormant world objects a follower's power can restore. Each follower's KAW effect (fx) says what it can wake.
+  const ENV_MS = 12 * 60000, FIX_PHASE = { charge: .5, cast: .6, channel: 2.0, recover: .67 };
+  const FIX = {
+    pylon:   { fx: 'shock',   label: 'Pylon energized',        dorm: 'Dormant pylon',      col: '#7fd7ff', region: 'highlands' },
+    antenna: { fx: 'shock',   label: 'Signal retransmitted',   dorm: 'Dead antenna',       col: '#9ff0ff', region: 'shore' },
+    lantern: { fx: 'burn',    label: 'Lantern lit',            dorm: 'Cold lantern',       col: '#ffb83f', region: 'meadow' },
+    geode:   { fx: 'burn',    label: 'Geode warmed open',      dorm: 'Closed geode',       col: '#ff7d4f', region: 'highlands' },
+    sprout:  { fx: 'snare',   label: 'Plant growing',          dorm: 'Planted seed',       col: '#6fcf7a', region: 'meadow' },
+    boulder: { fx: 'snare',   label: 'Path unblocked',         dorm: 'Blocking boulder',   col: '#c9b48a', region: 'woods' },
+    windmill:{ fx: 'stagger', label: 'Windmill turning',       dorm: 'Still windmill',     col: '#e8f0ff', region: 'meadow' },
+    machine: { fx: 'stagger', label: 'Machine repaired',       dorm: 'Broken machine',     col: '#d4d4e8', region: 'woods' },
+    basin:   { fx: 'heal',    label: 'Basin filled',           dorm: 'Empty basin',        col: '#55ddff', region: 'shore' },
+    obelisk: { fx: 'heal',    label: 'Star map aligned',       dorm: 'Dim observatory stone', col: '#d9c8ff', region: 'highlands' },
+  };
+  const R = { fixtures: [], fixMap: null, wilds: [], map: null, spawnT: 3, uid: 1, panel: null, hud: null, followers: [], hx: 0, hy: 0, hint: null };
 
   function st() {
     const S = GM().S; if (!S) return null;
-    if (!S.wishborn) S.wishborn = { id: Math.random().toString(36).slice(2, 10), items: { berry: 3, water: 2, crystal: 1 }, accord: [], log: [], species: {}, rescue: { rep: 0, credits: 0, done: 0, wrong: 0 }, parted: 0 };
+    if (!S.wishborn) S.wishborn = { id: Math.random().toString(36).slice(2, 10), items: { berry: 3, water: 2, crystal: 1 }, accord: [], log: [], species: {}, env: {}, restores: {}, ringz: 0, rescue: { rep: 0, credits: 0, done: 0, wrong: 0 }, parted: 0 };
     return S.wishborn;
   }
   const rec = id => { const s = st(); return s.species[id] || (s.species[id] = { seen: 0, observed: 0, offers: 0, refusals: 0, invites: 0, declined: 0, joined: 0, faced: 0, lvl: 0 }); };
@@ -65,6 +79,21 @@
     R.wilds = R.wilds.filter(w => w.map === G.map.id);
     while (R.wilds.length < 3) { const p = freeTile(G.px, G.py, 5, 14), sp = pool(G.map.id); if (!p || !sp.length) break; spawn(sp[Math.floor(Math.random() * sp.length)], p, Math.random() < .25); }
   }
+
+  const h2 = (a, b, c) => { let h = (a * 374761393 + b * 668265263 + c * 2147483647) >>> 0; h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+  function seedFixtures(mapId) {
+    const m = GM().G.map; R.fixtures = []; R.fixMap = mapId; if (!m || mapId === 'HOME') return;
+    const rl = realmFor(mapId), kinds = Object.keys(FIX); let hh = 0; for (const c of mapId) hh = (hh * 31 + c.charCodeAt(0)) >>> 0;
+    // each city holds 5 fixtures: 3 of its own realm's kinds when available, the rest from any realm
+    const own = kinds.filter(k => FIX[k].region === rl), rest = kinds.filter(k => FIX[k].region !== rl), pickK = [];
+    for (let i = 0; i < 5; i++) pickK.push(i < 3 && own.length ? own[i % own.length] : rest[(hh + i) % rest.length]);
+    const used = new Set();
+    pickK.forEach((kind, n) => { for (let i = 0; i < 400; i++) { const x = 3 + Math.floor(h2(hh, n * 7 + 1, i) * (m.w - 6)), y = 3 + Math.floor(h2(hh, n * 7 + 2, i) * (m.h - 6));
+        if (!GM().walkable(m, x, y) || used.has(x + ',' + y) || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => !GM().walkable(m, x + dx, y + dy))) continue;
+        used.add(x + ',' + y); R.fixtures.push({ id: mapId + '_' + kind + '_' + n, kind, x: x + .5, y: y + .5, map: mapId }); break; } });
+  }
+  const restored = o => { const t = st().env[o.id]; return !!t && Date.now() - t < ENV_MS; };
+  const fixLabel = o => restored(o) ? FIX[o.kind].label : FIX[o.kind].dorm;
 
   // ---- behavior: perception -> state; one state at a time, 12 states ----
   function setSt(w, s, t) { w.st = s; w.stT = t === undefined ? rnd(2, 5) : t; }
@@ -123,8 +152,13 @@
     if (R.followers.length !== s.accord.length) followerObjs();
     R.followers.forEach((f, i) => {
       f.anim += dt * (f.moving ? 7 : 1.5); f.stT -= dt; if (f.emoteT > 0) f.emoteT -= dt; else f.emote = '';
-      const dh = H(G.px - f.x, G.py - f.y), hung = Date.now() - (f.a.fedAt || 0) > HUNGRY_MS * .66;
+      if (f.a.energy == null) f.a.energy = 1; f.a.energy = Math.min(1, f.a.energy + dt * .004); const dh = H(G.px - f.x, G.py - f.y), hung = Date.now() - (f.a.fedAt || 0) > HUNGRY_MS * .66;
       if (dh > 14) { f.x = G.px - .8; f.y = G.py + .8; f.st = 'follow'; }
+      if (f.st === 'power') { const P = f.pw; if (!P || restored(P.o)) { f.st = 'follow'; f.pw = null; return; }
+        const ox = P.o.x + (f.x < P.o.x ? -.9 : .9), oy = P.o.y + .6;
+        if (P.ph === 'go') { f.anim += dt; P.t += dt; if (moveTo(f, ox, oy, 2.6, dt) || P.t > 9) { if (P.t > 9) { f.st = 'follow'; f.pw = null; return; } P.ph = 'charge'; P.t = 0; f.moving = false; f.dir = P.o.x > f.x ? 1 : -1; f.emote = '✦'; f.emoteT = 1.2; } return; }
+        P.t += dt; f.moving = false; if (P.t >= FIX_PHASE[P.ph]) { P.t = 0; if (P.ph === 'charge') P.ph = 'cast'; else if (P.ph === 'cast') P.ph = 'channel'; else if (P.ph === 'channel') { P.ph = 'recover'; restoreFix(f, P.o, P.asked); } else { f.st = 'follow'; f.pw = null; } } return; }
+      if ((f.st === 'follow' || f.st === 'idle') && !G.moving && f.a.energy > .3 && Math.random() < dt * .12) { const o = R.fixtures.find(o => FIX[o.kind].fx === f.sp.fx && !restored(o) && H(o.x - f.x, o.y - f.y) < 7); if (o && Math.random() < .35) { beginPower(f, o, false); return; } }
       if (f.st === 'idle' || f.st === 'nap') { if (f.stT <= 0 || (G.moving && dh > 2.5)) f.st = 'follow'; f.moving = false; return; }
       if (f.st === 'investigate') { if (GM().walkable(m, Math.floor(f.tx), Math.floor(f.ty))) { if (moveTo(f, f.tx, f.ty, 1.6, dt) || f.stT <= 0) { f.st = 'idle'; f.stT = 2; f.emote = '?'; f.emoteT = 1.5; } } else f.st = 'follow'; return; }
       const tgt = [G.px - .8 - i * .7, G.py + .7]; const d = H(tgt[0] - f.x, tgt[1] - f.y);
@@ -133,6 +167,19 @@
     });
     // an Accord follower that has not been fed for a long while may part ways — it was never captured
     R.partT = (R.partT || 0) + dt; if (R.partT > 240) { R.partT = 0; for (const a of s.accord.slice()) if (Date.now() - (a.fedAt || 0) > HUNGRY_MS && Math.random() < .3) part(a.sp, 'nobody shared food with it for a long while'); }
+  }
+  function beginPower(f, o, asked) { f.st = 'power'; f.pw = { o, ph: 'go', t: 0, asked }; f.emote = '✦'; f.emoteT = 1.2; }
+  function restoreFix(f, o, asked) {
+    const s = st(); if (restored(o)) return; s.env[o.id] = Date.now(); f.a.energy = Math.max(0, (f.a.energy == null ? 1 : f.a.energy) - .08); f.a.restores = (f.a.restores || 0) + 1;
+    const first = !s.restores[o.kind]; s.restores[o.kind] = (s.restores[o.kind] || 0) + 1; s.ringz += 2; log(f.sp.name + ': ' + FIX[o.kind].label + (asked ? ' (you asked)' : ' (on its own)'));
+    toast('✨ ' + f.sp.name + (asked ? ' ' : ' decided to — ') + FIX[o.kind].label + '. +2 ringz' + (first ? ' · new field entry' : ''), 'gold'); emit('restored', { sp: f.sp, kind: o.kind, asked, n: s.restores[o.kind] }); GM().save(); render();
+  }
+  function askFollower(f, o) {
+    if (restored(o)) return; const hungry = Date.now() - (f.a.fedAt || 0) > HUNGRY_MS * .66, tired = (f.a.energy == null ? 1 : f.a.energy) < .25;
+    const p = .5 + Math.min(3, f.a.restores || 0) * .1 - (hungry ? .3 : 0) - (tired ? .3 : 0);
+    if (Math.random() < p) { beginPower(f, o, true); toast(f.sp.name + ' heard you and heads for it.'); }
+    else { f.emote = '…'; f.emoteT = 2; log(f.sp.name + ' declined to use its power (' + (hungry ? 'hungry' : tired ? 'tired' : 'not now') + ').'); toast(f.sp.name + ' looks at it, looks at you, and doesn\'t. ' + (hungry ? 'It seems hungry.' : tired ? 'It seems tired.' : 'Not now.')); }
+    R.panel = null; render();
   }
   function part(id, why) { const s = st(), sp = SP.find(x => x.id === id); s.accord = s.accord.filter(a => a.sp !== id); R.followers = R.followers.filter(f => f.sp.id !== id); s.parted++; if (sp) { emit('parted', { sp, why }); log(sp.name + ' went its own way — ' + why + '.'); toast(sp.name + ' went its own way.', 'dim'); } GM().save(); render(); }
   function whistle() { R.followers.forEach(f => { f.st = 'follow'; f.emote = '♪'; f.emoteT = 1.2; const G = GM().G; if (H(G.px - f.x, G.py - f.y) > 4) { f.x = G.px - .8; f.y = G.py + .8; } }); toast(R.followers.length ? 'You whistle. Your Accord comes in.' : 'Nobody is walking with you yet.'); }
@@ -204,7 +251,13 @@
     if (p.kind === 'accord') {
       el.innerHTML = '<h3>Your Accord (' + s.accord.length + '/' + ACCORD_MAX + ')</h3><p>No capture. They walk with you by choice and can leave.</p>' +
         (s.accord.map(a => { const sp = SP.find(x => x.id === a.sp), hu = Math.min(100, (Date.now() - a.fedAt) / HUNGRY_MS * 100); return '<p><b>' + sp.name + '</b> · ' + sp.beh + ' · eats ' + sp.food + bar(100 - hu, hu > 66 ? '#ff7d6b' : '#6fcf7a') + '<span class="row">' + ['berry', 'water', 'crystal'].map(k => '<button data-fa="' + a.sp + ':' + k + '" ' + (it[k] < 1 ? 'disabled' : '') + '>Feed ' + k + '</button>').join('') + '<button data-part="' + a.sp + '">Part ways</button></span></p>'; }).join('') || '<p>Nobody yet. Observe a wild creature, offer what it eats, offer again, then invite.</p>') +
-        '<p>Rescues done ' + s.rescue.done + ' · Rep ' + s.rescue.rep + '</p><p><button id="wbClose">Close</button></p>';
+        '<p>Rescues done ' + s.rescue.done + ' · Rep ' + s.rescue.rep + ' · Ringz ' + s.ringz + ' · Fixtures woken ' + Object.values(s.restores).reduce((a, b) => a + b, 0) + '</p><p><button id="wbClose">Close</button></p>';
+    } else if (p.kind === 'fix') {
+      const o = p.o, F = FIX[o.kind], rs = restored(o);
+      el.innerHTML = '<h3>' + fixLabel(o) + '</h3><p>' + (rs ? 'Restored. It drifts back to dormant in a while, so the world keeps needing your Accord.' : 'Dormant. A companion whose power is <b>' + F.fx + '</b> can wake it.') + '</p><p>Companions do this on their own when they pass by and feel like it. You can ask. They may say no.</p>' +
+        (R.followers.map(f => { const can = f.sp.fx === F.fx, here = H(f.x - o.x, f.y - o.y) < 9; return '<p><button data-ask="' + f.sp.id + '" ' + (can && here && !rs ? '' : 'disabled') + '>' + (can ? 'Ask ' + f.sp.name : f.sp.name + ': ' + f.sp.fx + ' (not its power)') + (can && !here ? ' (too far)' : '') + '</button></p>'; }).join('') || '<p>Nobody walks with you yet.</p>') + '<p><button id="wbClose">Back</button></p>';
+      el.querySelectorAll('[data-ask]').forEach(b => b.onclick = () => askFollower(R.followers.find(f => f.sp.id === b.dataset.ask), o));
+      el.querySelector('#wbClose').onclick = () => { R.panel = null; render(); }; return;
     } else {
       const w = p.w; if (!w || w.gone) { el.hidden = true; R.panel = null; return; } const r = rec(w.sp.id), b = beat(w), pf = pFriendly(w);
       const steps = ['Observe', 'Offer', 'Offer again', 'Invite'].map((t, i) => '<span class="wbBeat ' + (i + 1 < b ? 'done' : i + 1 === b ? 'now' : '') + '">' + (i + 1) + '. ' + t + '</span>').join('');
@@ -227,17 +280,18 @@
 
   // ---- world hooks ----
   function nearestWild(maxD) { const G = GM().G; let best = null, bd = maxD; for (const w of R.wilds) { if (w.map !== G.map.id || w.gone) continue; const d = H(w.x - G.px, w.y - G.py); if (d < bd) { bd = d; best = w; } } return best; }
-  function use() { const w = nearestWild(1.8); if (!w) return null; return () => { R.panel = { kind: 'wild', w }; render(); }; }
+  function nearestFix(maxD) { const G = GM().G; let b = null, bd = maxD; for (const o of R.fixtures) { const d = H(o.x - G.px, o.y - G.py); if (d < bd) { bd = d; b = o; } } return b; }
+  function use() { const w = nearestWild(1.8), o = nearestFix(1.8); if (w) return () => { R.panel = { kind: 'wild', w }; render(); }; if (o) return () => { R.panel = { kind: 'fix', o }; render(); }; return null; }
   function tick(dt) {
     const s = st(), G = GM().G; if (!s || !G.map) return; if (!R.hud && document.body) css();
-    if (R.map !== G.map.id) { R.map = G.map.id; R.wilds = R.wilds.filter(w => w.map === G.map.id); R.spawnT = 2; R.followers.forEach(f => { f.x = G.px - .8; f.y = G.py + .8; }); if (G.map.id !== 'HOME') seedMap(); }
+    if (R.map !== G.map.id) { R.map = G.map.id; R.wilds = R.wilds.filter(w => w.map === G.map.id); R.spawnT = 2; R.followers.forEach(f => { f.x = G.px - .8; f.y = G.py + .8; }); if (G.map.id !== 'HOME') seedMap(); seedFixtures(G.map.id); }
     if (G.map.id === 'HOME') { if (R.panel && R.panel.kind === 'wild') { R.panel = null; render(); } return; }
     R.spawnT -= dt; if (R.spawnT <= 0) { R.spawnT = SPAWN_EVERY; if (R.wilds.length < WILD_CAP) { const p = freeTile(G.px, G.py, 7, 15), sp = pool(G.map.id); if (p && sp.length) spawn(sp[Math.floor(Math.random() * sp.length)], p, Math.random() < .2); } }
     for (const w of R.wilds) if (!w.gone && w.map === G.map.id) thinkWild(w, dt);
     // wilds that drift far are recycled
     R.wilds = R.wilds.filter(w => !w.gone && H(w.x - G.px, w.y - G.py) < 40);
     tickFollowers(dt);
-    const near = nearestWild(1.8); if (R.hud) { const h = R.hud.querySelector('#wbHint'); h.hidden = !near; if (near) h.textContent = near.sp.name + (near.hurt ? ' (hurt)' : '') + ' · press E'; }
+    const near = nearestWild(1.8), nf = nearestFix(1.8); if (R.hud) { const h = R.hud.querySelector('#wbHint'); h.hidden = !near && !nf; if (near) h.textContent = near.sp.name + (near.hurt ? ' (hurt)' : '') + ' · press E'; else if (nf) h.textContent = fixLabel(nf) + ' · press E'; }
     if (R.panel && R.panel.kind === 'wild' && (R.panel.w.gone || H(R.panel.w.x - G.px, R.panel.w.y - G.py) > 4)) { R.panel = null; render(); }
   }
   function drawCreature(c, t, hurt) {
@@ -249,14 +303,31 @@
     if (c.watch > .2) { cx.strokeStyle = '#b99cff'; cx.lineWidth = 2; cx.beginPath(); cx.arc(X, Y - 20, 22, -1.57, -1.57 + 6.283 * Math.min(1, c.watch / 2.2)); cx.stroke(); }
     if (c.hurt && !c.rescued) { cx.fillStyle = '#ff7d6b'; cx.font = 'bold 11px system-ui'; cx.textAlign = 'center'; cx.fillText('+', X + 14, Y - 30); }
   }
+  function drawFix(o, t) {
+    const T = GM().T, cx = GM().cx, X = o.x * T, Y = o.y * T, on = restored(o), c = FIX[o.kind].col, k = o.kind;
+    cx.save(); cx.translate(X, Y); cx.fillStyle = 'rgba(0,0,0,.3)'; cx.beginPath(); cx.ellipse(0, 3, 13, 4, 0, 0, 7); cx.fill();
+    if (on) { cx.fillStyle = c + '33'; cx.beginPath(); cx.arc(0, -16, 26 + Math.sin(t * 3 + o.x) * 2, 0, 7); cx.fill(); }
+    const body = on ? c : '#6c6a78', dim = on ? '#fff' : '#45434f'; cx.lineWidth = 3; cx.strokeStyle = body; cx.fillStyle = body;
+    if (k === 'pylon' || k === 'antenna') { cx.fillRect(-3, -28, 6, 30); cx.fillStyle = dim; cx.beginPath(); cx.arc(0, -30, k === 'pylon' ? 6 : 4, 0, 7); cx.fill(); if (k === 'antenna') { cx.beginPath(); cx.arc(0, -30, 11, -2.6, -.5); cx.stroke(); } }
+    else if (k === 'lantern') { cx.fillRect(-2, -24, 4, 26); cx.fillRect(-8, -34, 16, 12); cx.fillStyle = on ? '#fff3b0' : '#3b3944'; cx.fillRect(-5, -31, 10, 7); }
+    else if (k === 'geode') { cx.beginPath(); cx.ellipse(0, -10, 14, 11, 0, 0, 7); cx.fill(); cx.fillStyle = on ? '#ffe2c0' : '#45434f'; cx.beginPath(); cx.ellipse(0, -10, on ? 8 : 3, on ? 6 : 2, 0, 0, 7); cx.fill(); }
+    else if (k === 'sprout') { cx.fillStyle = '#5a4630'; cx.beginPath(); cx.ellipse(0, -2, 10, 4, 0, 0, 7); cx.fill(); cx.strokeStyle = on ? '#6fcf7a' : '#7d7458'; const hgt = on ? 30 : 8; cx.beginPath(); cx.moveTo(0, -2); cx.lineTo(0, -hgt); cx.stroke(); if (on) { cx.fillStyle = '#6fcf7a'; cx.beginPath(); cx.ellipse(-7, -hgt + 4, 7, 4, -.5, 0, 7); cx.ellipse(7, -hgt + 2, 7, 4, .5, 0, 7); cx.fill(); } }
+    else if (k === 'boulder') { cx.beginPath(); cx.ellipse(on ? 18 : 0, -10, 16, 12, 0, 0, 7); cx.fill(); }
+    else if (k === 'windmill') { cx.fillRect(-3, -30, 6, 32); cx.save(); cx.translate(0, -32); cx.rotate(on ? t * 4 : .3); for (let i = 0; i < 4; i++) { cx.rotate(1.5708); cx.fillStyle = body; cx.fillRect(-2, -16, 4, 16); } cx.restore(); }
+    else if (k === 'machine') { cx.fillRect(-13, -24, 26, 24); cx.fillStyle = dim; cx.fillRect(-8, -19, 16, 8); if (on) { cx.fillStyle = c; cx.fillRect(-8, -7, 4 + (Math.sin(t * 6) + 1) * 4, 3); } }
+    else if (k === 'basin') { cx.beginPath(); cx.ellipse(0, -8, 16, 8, 0, 0, 7); cx.fill(); cx.fillStyle = on ? '#9be8ff' : '#2b2a33'; cx.beginPath(); cx.ellipse(0, -9, 12, 5, 0, 0, 7); cx.fill(); }
+    else { cx.fillRect(-7, -38, 14, 40); cx.fillStyle = dim; for (let i = 0; i < 4; i++) { cx.beginPath(); cx.arc(((i % 2) - .5) * 7, -30 + i * 7, 1.6, 0, 7); cx.fill(); } }
+    cx.restore();
+  }
   function drawList(m, t) {
     const out = []; if (!m || !GM().S || m.id === 'HOME') return out;
+    for (const o of R.fixtures) if (o.map === m.id) out.push({ y: o.y + .05, f: () => drawFix(o, t) });
     for (const w of R.wilds) if (w.map === m.id && !w.gone) out.push({ y: w.y + .1, f: () => drawCreature(w, t, w.hurt && !w.rescued) });
     for (const f of R.followers) out.push({ y: f.y + .1, f: () => drawCreature(f, t, false) });
     return out;
   }
   function enterMap() { R.map = null; R.panel = null; if (R.panelEl) render(); }
 
-  window.WISHBORN = { on: f => listeners.push(f), tick, drawList, use, enterMap, state: st, species: SP, get wilds() { return R.wilds; }, get followers() { return R.followers; },
-    _t: { thinkWild, offer, invite, rescue, pFriendly, beat, spawn, part, feedFollower, whistle, R, rec, FEED, TEMP, followerObjs } };
+  window.WISHBORN = { on: f => listeners.push(f), tick, drawList, use, enterMap, state: st, species: SP, get wilds() { return R.wilds; }, get followers() { return R.followers; }, get fixtures() { return R.fixtures; },
+    _t: { FIX, restored, askFollower, restoreFix, beginPower, seedFixtures, thinkWild, offer, invite, rescue, pFriendly, beat, spawn, part, feedFollower, whistle, R, rec, FEED, TEMP, followerObjs } };
 })();
