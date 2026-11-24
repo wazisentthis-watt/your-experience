@@ -76,6 +76,12 @@ const url = 'file://' + path.resolve(process.argv[2] || '.', 'index.html');
   // left stick still walks; right stick no longer punches
   const rs = await page.evaluate(async () => { const f = __fresh(1.1); __ax(0, 0, 1, 0); await new Promise(r => setTimeout(r, 400)); __ax(0, 0, 0, 0); await new Promise(r => setTimeout(r, 80)); return 400 - f.hp; });
   check('right stick alone does not punch (it only aims)', rs === 0, rs);
+  const ult = await page.evaluate(async () => { const f = __fresh(3), R = SIKEE.debug.R; R.charge = 50; const h0 = f.hp; __down(4); await new Promise(r => setTimeout(r, 90)); __down(1); await new Promise(r => setTimeout(r, 90)); __up(1); await new Promise(r => setTimeout(r, 60)); const early = h0 - f.hp; f.hp = h0; R.charge = 100; __down(1); await new Promise(r => setTimeout(r, 90)); __up(1, 4); await new Promise(r => setTimeout(r, 60)); return { early, dealt: h0 - f.hp, charge: R.charge, brk: f.brk > 0 }; });
+  check('LB+B ultimate needs full charge', ult.early === 0, ult); check('ultimate: 60 damage, guard break, charge spent', ult.dealt === 60 && ult.charge < 10 && ult.brk, ult);
+  const tf = await page.evaluate(async () => { const f = __fresh(1.1), R = SIKEE.debug.R; R.charge = 60; __down(4); await new Promise(r => setTimeout(r, 90)); __down(0); await new Promise(r => setTimeout(r, 90)); __up(0, 4); await new Promise(r => setTimeout(r, 60)); const r = { form: R.form > 8, charge: R.charge }; R.p.atkCd = 0; const h0 = f.hp; __down(3); await new Promise(r => setTimeout(r, 90)); __up(3); await new Promise(r => setTimeout(r, 60)); r.cross = h0 - f.hp; return r; });
+  check('LB+A transform spends 50 charge, starts the form', tf.form && tf.charge <= 20, tf); check('transformed cross = 20 (+30%)', tf.cross === 20, tf);
+  const tn = await page.evaluate(async () => { const f = __fresh(3), R = SIKEE.debug.R; R.charge = 10; f.cd = 99; __down(14); await new Promise(r => setTimeout(r, 90)); __up(14); await new Promise(r => setTimeout(r, 60)); return { c: R.charge, cd: f.cd }; });
+  check('D-pad left taunts: +12 charge and the foe is baited', tn.c >= 22 && tn.cd <= .3, tn);
   check('no page errors', errs.length === 0, errs.slice(0, 3));
   await page.screenshot({ path: path.join(process.argv[2] || '.', 'tools/sop-blend.png') });
   console.log(`\n${pass} passed, ${fail} failed`); await browser.close(); process.exit(fail ? 1 : 0);

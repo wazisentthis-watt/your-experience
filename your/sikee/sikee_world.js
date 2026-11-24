@@ -268,6 +268,7 @@
   function damageFoe(f, dmg, dx, dy, knock, stagger, opts) {
     opts = opts || {}; let crit = false;
     if (opts.melee && R.crit > 0) { dmg = Math.round(dmg * 2); stagger = Math.max(stagger || 0, .5); R.crit = 0; crit = true; }
+    if (opts.melee && R.form > 0) dmg = Math.round(dmg * 1.3);
     if (f.brk > 0 && !opts.dot) dmg = Math.round(dmg * 1.5);
     f.hp -= dmg; f.flash = .18; const l = Math.hypot(dx, dy) || 1;
     f.kx = dx / l * knock * 6; f.ky = dy / l * knock * 6;
@@ -356,7 +357,7 @@
     const b = R.battle, f = b.foe, g = GM().G, p = R.p;
     vfxTick(real);
     let dt = real; if (R.slow > 0) { R.slow -= real; dt = real * .35; }
-    p.slipCd = Math.max(0, (p.slipCd || 0) - dt); p.parryT = Math.max(0, (p.parryT || 0) - dt); p.parryCd = Math.max(0, (p.parryCd || 0) - dt);
+    p.slipCd = Math.max(0, (p.slipCd || 0) - dt); p.parryT = Math.max(0, (p.parryT || 0) - dt); p.tauntCd = Math.max(0, (p.tauntCd || 0) - dt); if (R.form > 0) R.form = Math.max(0, R.form - dt); p.parryCd = Math.max(0, (p.parryCd || 0) - dt);
     if (R.counter > 0) R.counter = Math.max(0, R.counter - dt);
     if (R.kiCharging && !p.block) { R.charge = Math.min(CHARGE_MAX, R.charge + 22 * dt); if (Math.random() < .5) addParts(GM().G.px, GM().G.py - .2, '#9ff0ff', 1, 1.2, .35, 2); }
     if (f.poiseT > 0) f.poiseT -= dt; else f.poise = Math.max(0, f.poise - 12 * dt);
@@ -473,6 +474,26 @@
     p.fx = dx / d; p.fy = dy / d; p.atkCd = 1; R.stop = .1;
     addFx('text', f.x, f.y - 1.2, { text: 'THROW', col: '#ffd24a', max: .7 });
     damageFoe(f, 18, p.fx, p.fy, 1.7, .8, { melee: true, col: '#ffd24a' }); updateBattleUI();
+  }
+  function taunt() {   // D-pad left: bait the foe into attacking and gain a little charge
+    const b = R.battle; if (!b || R.p.tauntCd > 0) return; const f = b.foe, g = GM().G; R.p.tauntCd = 3;
+    R.charge = Math.min(CHARGE_MAX, R.charge + 12); f.cd = Math.min(f.cd || 0, .3);
+    addFx('text', g.px, g.py - .9, { text: 'TAUNT', col: '#ffb347', max: .7 }); addParts(g.px, g.py - .3, '#ffb347', 8, 3, .3, 2); updateBattleUI();
+  }
+  function transform() {   // LB + A: 50 charge for 10s of +30% melee damage
+    const b = R.battle; if (!b) return; const g = GM().G;
+    if (!R.mella) { logLine('MELLA is down.'); updateBattleUI(); return; }
+    if (R.form > 0) return; if (R.charge < 50) { logLine('Transform needs 50 charge.'); updateBattleUI(); return; }
+    R.charge -= 50; R.form = 10; addFx('text', g.px, g.py - .9, { text: 'TRANSFORM', col: '#ff9ad5', max: .9 }); addFx('ring', g.px, g.py - .2, { col: '#ff9ad5', max: .5, rad: 1.5 });
+    addParts(g.px, g.py - .2, '#ff9ad5', 18, 5, .5, 2.4); shake(.25); logLine('Transformed: +30% melee for 10s.'); updateBattleUI();
+  }
+  function ultimate() {   // LB + B: needs full charge and the foe within 5 tiles; guard break + heavy hit
+    const b = R.battle; if (!b) return; const f = b.foe, g = GM().G;
+    if (!R.mella) { logLine('MELLA is down.'); updateBattleUI(); return; }
+    if (R.charge < CHARGE_MAX) { logLine('Ultimate needs full charge.'); updateBattleUI(); return; }
+    if (Math.hypot(f.x - g.px, f.y - g.py) > 5) { logLine('Foe is too far for the ultimate.'); updateBattleUI(); return; }
+    R.charge = 0; R.stop = .18; shake(.6); addFx('text', f.x, f.y - 1.3, { text: 'ULTIMATE', col: '#ff9ad5', max: 1 }); addFx('ring', f.x, f.y - .3, { col: '#ff9ad5', max: .6, rad: 2 });
+    damageFoe(f, 60, f.x - g.px, f.y - g.py, 2, 1.5, { col: '#ff9ad5' }); if (R.battle) { f.brk = 1.3; f.poise = 0; } updateBattleUI();
   }
   function parry() { const p = R.p; if (!R.battle || p.parryCd > 0) return; p.parryT = .28; p.parryCd = .7; }
   function guard(on) { if (R.p) R.p.block = !!on; }
@@ -930,7 +951,7 @@
       const manual = !!((ax || ay) && R.p); if (manual) { const l = Math.hypot(ax, ay) || 1; R.p.fx = ax / l; R.p.fy = ay / l; }
       R.manualAim = manual && (name === 'blast' || name === 'overblast');
       if (MOVES[name]) move(name);
-      else ({ strike, blast, dodge, run, kaw: callKaw, clinch, parry, snap, overblast, guard: () => guard(opt), charge: () => kiCharge(opt) })[name]?.();
+      else ({ strike, blast, dodge, run, kaw: callKaw, clinch, parry, snap, overblast, taunt, transform, ultimate, guard: () => guard(opt), charge: () => kiCharge(opt) })[name]?.();
       R.manualAim = false; return true;
     },
     wreckSlow,
