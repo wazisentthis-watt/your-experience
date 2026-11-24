@@ -47,6 +47,9 @@
       'Hold LB': 'Charge ki',
       'LB + X': 'Special 1: call your KAW (they decide if they help)',
       'LB + Y': 'Special 2: Overblast (70 charge)',
+      'LB + B': 'Ultimate (full charge, foe within 5 tiles)',
+      'LB + A': 'Transform (50 charge, +30% melee for 10s)',
+      'D-pad left': 'Taunt (bait an attack, +12 charge)',
       'LB + RT': 'Vanish: run, once you are clear of the foe',
       'D-pad up': 'Call your KAW',
       'Hold Menu': 'Run, once you are clear of the foe'
@@ -115,7 +118,7 @@
       var face = [['fx', X, 'x'], ['fy', Y, 'y'], ['fa', A, 'a'], ['fb', B, 'b']], used = false;
       face.forEach(function (f) {
         if (!edge(f[0], f[1])) return; used = true; var k = f[2];
-        if (LB) { if (k === 'x') S.act('kaw'); else if (k === 'y') S.act('overblast', ax, ay); return; }   /* B ultimate and A transform do not exist in street fights */
+        if (LB) { if (k === 'x') S.act('kaw'); else if (k === 'y') S.act('overblast', ax, ay); else if (k === 'b') S.act('ultimate'); else S.act('transform'); return; }
         if (RB && ltOn) { if (k === 'a') S.act('clinch'); else if (k === 'b') S.act('spin'); return; }
         if (RB) { S.act(k === 'x' ? 'hook' : k === 'y' ? 'upper' : 'head'); return; }
         if (ltOn) { S.act(k === 'x' || k === 'y' ? 'body' : 'leg'); return; }
@@ -128,6 +131,7 @@
       if (edge('fr', rtOn)) { if (LB) S.act('run'); else S.act('blast', ax, ay); }
       if (ltOn && edge('froll', lmag > .85)) S.act('dodge');
       if (edge('fdu', DU)) S.act('kaw');
+      if (edge('fdl', btn(gp, 14))) S.act('taunt');
       if (MENU) { if (!fleeT) fleeT = t; else if (t - fleeT > FLEE_MS) { fleeT = 0; S.act('run'); } } else fleeT = 0;
       /* the other layers see only the left stick */
     } else {
